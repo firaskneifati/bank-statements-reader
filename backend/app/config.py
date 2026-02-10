@@ -4,7 +4,8 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     mock_mode: bool = True
     anthropic_api_key: str = ""
-    allowed_origins: str = "http://localhost:3000"
+    allowed_origins: str = "http://localhost:4000"
+    database_url: str = ""
     upload_dir: str = "uploads"
     max_file_size_mb: int = 10
 

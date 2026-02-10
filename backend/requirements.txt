@@ -6,3 +6,8 @@ anthropic==0.44.0
 openpyxl==3.1.5
 pydantic-settings==2.7.1
 python-dotenv==1.0.1
+sqlmodel==0.0.22
+asyncpg==0.30.0
+alembic==1.14.1
+greenlet==3.1.1
+sqlalchemy[asyncio]==2.0.36
