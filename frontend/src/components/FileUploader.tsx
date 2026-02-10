@@ -1,0 +1,76 @@
+"use client";
+
+import { useCallback } from "react";
+import { useDropzone } from "react-dropzone";
+import { Upload, FileText } from "lucide-react";
+
+interface FileUploaderProps {
+  onUpload: (files: File[]) => void;
+  disabled?: boolean;
+}
+
+export function FileUploader({ onUpload, disabled }: FileUploaderProps) {
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+        onUpload(acceptedFiles);
+      }
+    },
+    [onUpload]
+  );
+
+  const { getRootProps, getInputProps, isDragActive, acceptedFiles } =
+    useDropzone({
+      onDrop,
+      accept: { "application/pdf": [".pdf"] },
+      disabled,
+      multiple: true,
+    });
+
+  return (
+    <div
+      {...getRootProps()}
+      className={`
+        border-2 border-dashed rounded-xl p-12 text-center cursor-pointer
+        transition-all duration-200
+        ${isDragActive
+          ? "border-blue-500 bg-blue-50"
+          : "border-gray-300 bg-white hover:border-blue-400 hover:bg-gray-50"
+        }
+        ${disabled ? "opacity-50 cursor-not-allowed" : ""}
+      `}
+    >
+      <input {...getInputProps()} />
+      <div className="flex flex-col items-center gap-3">
+        {isDragActive ? (
+          <>
+            <Upload className="h-12 w-12 text-blue-500" />
+            <p className="text-blue-600 text-lg font-medium">
+              Drop your PDFs here...
+            </p>
+          </>
+        ) : (
+          <>
+            <FileText className="h-12 w-12 text-gray-400" />
+            <p className="text-gray-700 text-lg font-medium">
+              Drag & drop bank statement PDFs here
+            </p>
+            <p className="text-gray-500 text-sm">
+              or click to browse files (PDF only, max 10MB each)
+            </p>
+          </>
+        )}
+        {acceptedFiles.length > 0 && !disabled && (
+          <div className="mt-3 text-sm text-gray-500">
+            {acceptedFiles.map((file) => (
+              <div key={file.name} className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,52 @@
+export interface CategoryConfig {
+  name: string;
+  description: string;
+}
+
+export const DEFAULT_CATEGORIES: CategoryConfig[] = [
+  { name: "Payroll & Income", description: "Salary, wages, direct deposits, government payments, tax refunds" },
+  { name: "Rent & Mortgage", description: "Rent payments, mortgage payments, property-related" },
+  { name: "Utilities", description: "Hydro, gas, electric, internet, phone, cable" },
+  { name: "Groceries", description: "Supermarkets, grocery stores, food shopping" },
+  { name: "Dining", description: "Restaurants, fast food, coffee shops, food delivery" },
+  { name: "Transportation", description: "Transit, gas stations, parking, ride-sharing, car payments" },
+  { name: "Insurance", description: "Any insurance premiums" },
+  { name: "Subscriptions", description: "Streaming, software, memberships, recurring digital services" },
+  { name: "E-Transfer", description: "Interac e-transfers (sent or received)" },
+  { name: "Bank Fees", description: "Account fees, service charges, overdraft fees, interest charges" },
+  { name: "Shopping", description: "Retail stores, online shopping, Amazon, clothing" },
+  { name: "Health & Wellness", description: "Pharmacy, dental, medical, gym, fitness" },
+  { name: "Entertainment", description: "Movies, concerts, sports, hobbies, gaming" },
+  { name: "Business Expense", description: "Office supplies, software, professional services, business transfers" },
+  { name: "Transfers", description: "Transfers between own accounts, bill payments, loan payments" },
+  { name: "Other", description: "Only if none of the above fit" },
+];
+
+export interface Transaction {
+  date: string;
+  posting_date: string | null;
+  description: string;
+  amount: number;
+  type: "debit" | "credit";
+  balance: number | null;
+  category: string;
+}
+
+export interface StatementResult {
+  filename: string;
+  transactions: Transaction[];
+  total_debits: number;
+  total_credits: number;
+  transaction_count: number;
+}
+
+export interface UploadResponse {
+  statements: StatementResult[];
+  mock_mode: boolean;
+}
+
+export interface ExportRequest {
+  transactions: Transaction[];
+  format: "csv" | "xlsx";
+  filename: string;
+}
