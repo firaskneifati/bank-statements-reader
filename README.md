@@ -125,6 +125,42 @@ bank-statements-reader/
 └── README.md
 ```
 
+## Git Usage
+
+This repo uses the `firaskneifati` GitHub account. Before any push, switch SSH identity in **zsh**:
+
+```zsh
+# Switch to the correct GitHub account (required before pushing)
+git-acc firaskneifati
+
+# Stage changes
+git add <files>
+
+# Commit (use conventional commit format)
+git commit -m "feat: add new feature"
+
+# Push
+git push
+```
+
+### Conventional Commit Format
+
+```
+feat:     new feature
+fix:      bug fix
+docs:     documentation only
+style:    formatting, no code change
+refactor: code restructuring, no behavior change
+test:     adding or updating tests
+chore:    maintenance, dependencies, config
+```
+
+### Important
+
+- Always run `git-acc firaskneifati` in **zsh** before `git push` — this loads the correct SSH key (`~/.ssh/id_rsa_firaskneifati`)
+- The command must run in the same shell session as the push
+- If you get a "permission denied" error, re-run `git-acc firaskneifati`
+
 ## Quick Start
 
 ### Prerequisites
