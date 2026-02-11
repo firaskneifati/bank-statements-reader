@@ -31,11 +31,12 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const hasPostingDates = transactions.some((t) => t.posting_date);
+  const hasSources = transactions.some((t) => t.source);
 
   const columns = useMemo(
     () => [
       columnHelper.accessor("date", {
-        header: "Transaction Date",
+        header: "Date",
         cell: (info) => info.getValue(),
       }),
       ...(hasPostingDates
@@ -94,8 +95,34 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
           </span>
         ),
       }),
+      ...(hasSources
+        ? [
+            columnHelper.accessor("source", {
+              header: "Source",
+              cell: (info) => {
+                const val = info.getValue() || "";
+                const short = val.replace(/\.pdf$/i, "");
+                const color = info.row.original.sourceColor;
+                return (
+                  <span className="relative group inline-block">
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium max-w-[10rem] truncate ${
+                        color ? `${color.bg} ${color.text}` : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {short}
+                    </span>
+                    <span className="absolute bottom-full right-0 mb-1.5 px-2 py-1 bg-gray-900 text-white text-xs rounded max-w-[20rem] break-words opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-normal">
+                      {val}
+                    </span>
+                  </span>
+                );
+              },
+            }),
+          ]
+        : []),
     ],
-    [hasPostingDates]
+    [hasPostingDates, hasSources]
   );
 
   const table = useReactTable({
@@ -109,7 +136,7 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200">
-      <table className="min-w-full divide-y divide-gray-200">
+      <table className="w-max min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>

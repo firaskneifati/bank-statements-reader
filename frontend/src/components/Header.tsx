@@ -33,7 +33,10 @@ export function Header() {
             <Settings className="h-4 w-4" />
           </Link>
           <button
-            onClick={() => signOut({ callbackUrl: "/sign-in" })}
+            onClick={() => {
+              sessionStorage.removeItem("bank-statement-results");
+              signOut({ callbackUrl: "/sign-in" });
+            }}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <LogOut className="h-4 w-4" />

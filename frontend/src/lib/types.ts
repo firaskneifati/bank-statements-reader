@@ -30,6 +30,8 @@ export interface Transaction {
   type: "debit" | "credit";
   balance: number | null;
   category: string;
+  source?: string;
+  sourceColor?: { bg: string; text: string; border: string; activeBg: string };
 }
 
 export interface StatementResult {

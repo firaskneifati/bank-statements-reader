@@ -6,15 +6,30 @@ import { FileUploader } from "@/components/FileUploader";
 import { CategoryManager } from "@/components/CategoryManager";
 import { TransactionTable } from "@/components/TransactionTable";
 import { ExportButtons } from "@/components/ExportButtons";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { UsageBanner } from "@/components/UsageBanner";
 import { UploadProgress, UploadProgressData } from "@/components/UploadProgress";
 import { uploadSingleStatement, fetchUsage } from "@/lib/api-client";
 import { UploadResponse, UsageStats, CategoryConfig, DEFAULT_CATEGORIES } from "@/lib/types";
 import { Header } from "@/components/Header";
-import { AlertCircle, RotateCcw, FileText, Plus } from "lucide-react";
+import { AlertCircle, RotateCcw, Trash2, FileText, Plus } from "lucide-react";
 
 const STORAGE_KEY = "bank-statement-categories";
+const SESSION_DATA_KEY = "bank-statement-results";
+
+const STATEMENT_COLORS = [
+  { bg: "bg-violet-100", text: "text-violet-700", border: "border-violet-300", activeBg: "bg-violet-600" },
+  { bg: "bg-teal-100", text: "text-teal-700", border: "border-teal-300", activeBg: "bg-teal-600" },
+  { bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-300", activeBg: "bg-amber-600" },
+  { bg: "bg-rose-100", text: "text-rose-700", border: "border-rose-300", activeBg: "bg-rose-600" },
+  { bg: "bg-cyan-100", text: "text-cyan-700", border: "border-cyan-300", activeBg: "bg-cyan-600" },
+  { bg: "bg-lime-100", text: "text-lime-700", border: "border-lime-300", activeBg: "bg-lime-600" },
+  { bg: "bg-fuchsia-100", text: "text-fuchsia-700", border: "border-fuchsia-300", activeBg: "bg-fuchsia-600" },
+  { bg: "bg-orange-100", text: "text-orange-700", border: "border-orange-300", activeBg: "bg-orange-600" },
+  { bg: "bg-sky-100", text: "text-sky-700", border: "border-sky-300", activeBg: "bg-sky-600" },
+  { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-300", activeBg: "bg-emerald-600" },
+  { bg: "bg-pink-100", text: "text-pink-700", border: "border-pink-300", activeBg: "bg-pink-600" },
+  { bg: "bg-indigo-100", text: "text-indigo-700", border: "border-indigo-300", activeBg: "bg-indigo-600" },
+];
 
 function loadCategories(): CategoryConfig[] {
   if (typeof window === "undefined") return DEFAULT_CATEGORIES;
@@ -28,7 +43,7 @@ function loadCategories(): CategoryConfig[] {
   return DEFAULT_CATEGORIES;
 }
 
-type AppState = "idle" | "uploading" | "loading" | "results" | "error";
+type AppState = "idle" | "uploading" | "results" | "error";
 
 export default function Home() {
   const { status: sessionStatus } = useSession();
@@ -41,7 +56,25 @@ export default function Home() {
 
   useEffect(() => {
     setCategories(loadCategories());
+    try {
+      const stored = sessionStorage.getItem(SESSION_DATA_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as UploadResponse;
+        if (parsed.statements?.length > 0) {
+          setData(parsed);
+          setState("results");
+        }
+      }
+    } catch {}
   }, []);
+
+  useEffect(() => {
+    if (data) {
+      sessionStorage.setItem(SESSION_DATA_KEY, JSON.stringify(data));
+    } else {
+      sessionStorage.removeItem(SESSION_DATA_KEY);
+    }
+  }, [data]);
 
   useEffect(() => {
     if (sessionStatus !== "authenticated") return;
@@ -67,23 +100,6 @@ export default function Home() {
   });
 
   const handleUpload = async (files: File[]) => {
-    if (files.length === 1) {
-      // Single file — use simple loading state
-      setState("loading");
-      setError("");
-      try {
-        const result = await uploadSingleStatement(files[0], categories);
-        setData(result);
-        if (result.usage) setUsage(result.usage);
-        setState("results");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An unexpected error occurred");
-        setState("error");
-      }
-      return;
-    }
-
-    // Multiple files — upload one at a time with progress
     setState("uploading");
     setError("");
     const progress: UploadProgressData = {
@@ -184,7 +200,9 @@ export default function Home() {
 
   const addMoreInputRef = useRef<HTMLInputElement>(null);
 
-  const handleReset = () => {
+  const handleDiscard = () => {
+    if (!window.confirm("Discard all results? This cannot be undone.")) return;
+    sessionStorage.removeItem(SESSION_DATA_KEY);
     setState("idle");
     setData(null);
     setError("");
@@ -194,7 +212,12 @@ export default function Home() {
   const visibleStatements = selectedStatement !== null
     ? [data?.statements[selectedStatement]].filter(Boolean)
     : data?.statements ?? [];
-  const filteredTransactions = visibleStatements.flatMap((s) => s!.transactions);
+  const colorMap = Object.fromEntries(
+    (data?.statements ?? []).map((s, i) => [s.filename, STATEMENT_COLORS[i % STATEMENT_COLORS.length]])
+  );
+  const filteredTransactions = visibleStatements.flatMap((s) =>
+    s!.transactions.map((t) => ({ ...t, source: s!.filename, sourceColor: colorMap[s!.filename] }))
+  );
   const totalDebits = visibleStatements.reduce((sum, s) => sum + s!.total_debits, 0);
   const totalCredits = visibleStatements.reduce((sum, s) => sum + s!.total_credits, 0);
 
@@ -210,8 +233,6 @@ export default function Home() {
         </>
       )}
 
-      {state === "loading" && <LoadingSpinner />}
-
       {state === "uploading" && <UploadProgress progress={uploadProgress} />}
 
       {state === "error" && (
@@ -222,7 +243,7 @@ export default function Home() {
               <h3 className="text-red-800 font-semibold">Upload Failed</h3>
               <p className="text-red-700 mt-1">{error}</p>
               <button
-                onClick={handleReset}
+                onClick={handleDiscard}
                 className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-800 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
               >
                 <RotateCcw className="h-4 w-4" />
@@ -250,7 +271,7 @@ export default function Home() {
             </div>
           )}
 
-          {data.statements.length > 1 && (
+          {data.statements.length >= 1 && (
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setSelectedStatement(null)}
@@ -262,20 +283,23 @@ export default function Home() {
               >
                 All ({data.statements.reduce((sum, s) => sum + s.transaction_count, 0)})
               </button>
-              {data.statements.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedStatement(i)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    selectedStatement === i
-                      ? "bg-blue-600 text-white"
-                      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  <FileText className="h-3.5 w-3.5" />
-                  {s.filename} ({s.transaction_count})
-                </button>
-              ))}
+              {data.statements.map((s, i) => {
+                const c = colorMap[s.filename];
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedStatement(i)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      selectedStatement === i
+                        ? `${c.activeBg} text-white`
+                        : `${c.bg} ${c.text} border ${c.border} hover:opacity-80`
+                    }`}
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    {s.filename} ({s.transaction_count})
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -319,11 +343,11 @@ export default function Home() {
                 Add More
               </button>
               <button
-                onClick={handleReset}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                onClick={handleDiscard}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
               >
-                <RotateCcw className="h-4 w-4" />
-                New Upload
+                <Trash2 className="h-4 w-4" />
+                Discard
               </button>
             </div>
           </div>
