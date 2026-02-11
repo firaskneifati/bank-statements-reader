@@ -57,6 +57,16 @@ export interface UsageStats {
   month_exports: number;
   month_bytes_processed: number;
   page_limit: number | null;
+  plan: string;
+}
+
+export interface BillingStatus {
+  plan: string;
+  page_limit: number | null;
+  month_pages: number;
+  stripe_subscription_id: string | null;
+  current_period_end: number | null;
+  cancel_at_period_end: boolean;
 }
 
 export interface UploadResponse {

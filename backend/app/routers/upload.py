@@ -99,6 +99,7 @@ def _usage_from_org(org: Organization) -> UsageStats:
         month_exports=org.month_exports,
         month_bytes_processed=org.month_bytes_processed,
         page_limit=org.page_limit,
+        plan=org.plan,
     )
 
 
@@ -114,12 +115,12 @@ async def upload_statements(
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
 
-    # Enforce page limit (pre-check)
+    # Enforce monthly page limit (pre-check)
     org = await session.get(Organization, current_user.org_id)
-    if org and org.page_limit is not None and org.total_pages >= org.page_limit:
+    if org and org.page_limit is not None and org.month_pages >= org.page_limit:
         raise HTTPException(
             status_code=403,
-            detail=f"You've used all {org.total_pages} of your {org.page_limit} page limit. Please contact support to increase your limit.",
+            detail=f"You've used all {org.month_pages} of your {org.page_limit} monthly page limit. Upgrade your plan for more pages.",
         )
 
     custom_categories: list[dict] | None = None
@@ -138,12 +139,12 @@ async def upload_statements(
     total_bytes = sum(r[1] for r in results)
     total_pages = sum(s.page_count for s in statements)
 
-    # Enforce page limit (post-check: reject if this upload would exceed the limit)
-    if org and org.page_limit is not None and org.total_pages + total_pages > org.page_limit:
-        remaining = max(0, org.page_limit - org.total_pages)
+    # Enforce monthly page limit (post-check: reject if this upload would exceed the limit)
+    if org and org.page_limit is not None and org.month_pages + total_pages > org.page_limit:
+        remaining = max(0, org.page_limit - org.month_pages)
         raise HTTPException(
             status_code=403,
-            detail=f"This upload has {total_pages} pages but you only have {remaining} of your {org.page_limit} page limit remaining. Try uploading fewer files.",
+            detail=f"This upload has {total_pages} pages but you only have {remaining} of your {org.page_limit} monthly page limit remaining. Upgrade your plan or try uploading fewer files.",
         )
     total_txns = sum(s.transaction_count for s in statements)
     doc_count = len(statements)

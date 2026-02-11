@@ -17,22 +17,22 @@ async def get_usage(
 ):
     org = await session.get(Organization, current_user.org_id)
 
-    # Lazy monthly reset: if usage_reset_at is in a previous month, zero monthly counters
+    # Lazy monthly reset for free plan: 30-day rolling period from usage_reset_at.
+    # Paid plans have their counters reset via Stripe webhook on billing period renewal.
     now = datetime.utcnow()
-    if org and (
-        org.usage_reset_at.year < now.year
-        or org.usage_reset_at.month < now.month
-    ):
-        org.month_uploads = 0
-        org.month_documents = 0
-        org.month_pages = 0
-        org.month_transactions = 0
-        org.month_exports = 0
-        org.month_bytes_processed = 0
-        org.usage_reset_at = now
-        session.add(org)
-        await session.commit()
-        await session.refresh(org)
+    if org and not org.stripe_subscription_id:
+        days_since_reset = (now - org.usage_reset_at).days
+        if days_since_reset >= 30:
+            org.month_uploads = 0
+            org.month_documents = 0
+            org.month_pages = 0
+            org.month_transactions = 0
+            org.month_exports = 0
+            org.month_bytes_processed = 0
+            org.usage_reset_at = now
+            session.add(org)
+            await session.commit()
+            await session.refresh(org)
 
     return UsageStats(
         total_uploads=org.total_uploads if org else 0,
@@ -48,4 +48,5 @@ async def get_usage(
         month_exports=org.month_exports if org else 0,
         month_bytes_processed=org.month_bytes_processed if org else 0,
         page_limit=org.page_limit if org else None,
+        plan=org.plan if org else "free",
     )

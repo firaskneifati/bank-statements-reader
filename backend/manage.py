@@ -55,6 +55,9 @@ async def set_limit(email: str, page_limit: int | None):
             sys.exit(1)
 
         org = await session.get(Organization, user.org_id)
+        if org.stripe_subscription_id:
+            print(f"Warning: {email}'s org has an active Stripe subscription (plan: {org.plan})")
+            print("  Manual limit override — Stripe webhook may overwrite this on next sync.")
         org.page_limit = page_limit
         session.add(org)
         await session.commit()

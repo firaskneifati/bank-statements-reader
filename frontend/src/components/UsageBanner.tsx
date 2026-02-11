@@ -1,6 +1,7 @@
 "use client";
 
 import { BarChart3, FileText } from "lucide-react";
+import Link from "next/link";
 import { UsageStats } from "@/lib/types";
 
 interface UsageBannerProps {
@@ -24,8 +25,10 @@ export function UsageBanner({ usage, loading }: UsageBannerProps) {
 
   if (!usage) return null;
 
+  const currentPlan = usage.plan || "free";
+  const showUpgrade = currentPlan === "free" || currentPlan === "starter";
   const hasLimit = usage.page_limit !== null && usage.page_limit !== undefined;
-  const pagesUsed = usage.total_pages;
+  const pagesUsed = usage.month_pages;
   const pagesLimit = usage.page_limit ?? 0;
   const percentage = hasLimit ? Math.min((pagesUsed / pagesLimit) * 100, 100) : 0;
   const isNearLimit = hasLimit && percentage >= 80;
@@ -54,7 +57,7 @@ export function UsageBanner({ usage, loading }: UsageBannerProps) {
                 isAtLimit ? "text-red-700" : isNearLimit ? "text-amber-700" : "text-blue-700"
               }`}
             >
-              Pages Processed
+              <span className="capitalize">{currentPlan}</span> Plan
             </span>
           </div>
           <div className="flex items-baseline gap-1">
@@ -78,9 +81,28 @@ export function UsageBanner({ usage, loading }: UsageBannerProps) {
               isAtLimit ? "text-red-500" : isNearLimit ? "text-amber-500" : "text-blue-400"
             }`}
           >
-            {isAtLimit
-              ? "Limit reached — uploads disabled"
-              : `${formatNumber(Math.max(0, pagesLimit - pagesUsed))} pages remaining`}
+            {isAtLimit ? (
+              <>
+                Limit reached{" "}
+                {showUpgrade && (
+                  <Link href="/settings/billing" className="underline font-medium hover:opacity-80">
+                    — Upgrade
+                  </Link>
+                )}
+              </>
+            ) : (
+              <>
+                {formatNumber(Math.max(0, pagesLimit - pagesUsed))} pages remaining
+                {showUpgrade && isNearLimit && (
+                  <>
+                    {" "}
+                    <Link href="/settings/billing" className="underline font-medium hover:opacity-80">
+                      Upgrade
+                    </Link>
+                  </>
+                )}
+              </>
+            )}
           </p>
           <div className="mt-1.5 h-1.5 rounded-full bg-gray-200 overflow-hidden">
             <div

@@ -34,6 +34,7 @@ class UsageStats(BaseModel):
     month_exports: int
     month_bytes_processed: int
     page_limit: int | None = None
+    plan: str = "free"
 
 
 class UploadResponse(BaseModel):
