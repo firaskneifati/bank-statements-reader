@@ -18,6 +18,7 @@ uploads/
 node_modules/
 .next/
 out/
+tsconfig.tsbuildinfo
 
 # IDE
 .vscode/
