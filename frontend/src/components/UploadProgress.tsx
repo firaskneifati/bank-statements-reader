@@ -1,16 +1,21 @@
 "use client";
 
-import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, StopCircle } from "lucide-react";
 
 export interface UploadProgressData {
   total: number;
   completed: number;
   currentFile: string | null;
-  completedFiles: string[];
+  completedFiles: { name: string; pages: number }[];
   failedFiles: { name: string; error: string }[];
 }
 
-export function UploadProgress({ progress }: { progress: UploadProgressData }) {
+interface UploadProgressProps {
+  progress: UploadProgressData;
+  onCancel?: () => void;
+}
+
+export function UploadProgress({ progress, onCancel }: UploadProgressProps) {
   const { total, completed, currentFile, completedFiles, failedFiles } = progress;
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -21,9 +26,20 @@ export function UploadProgress({ progress }: { progress: UploadProgressData }) {
           <h3 className="text-sm font-semibold text-gray-900">
             Uploading statements
           </h3>
-          <span className="text-sm text-gray-500">
-            {completed} of {total} files
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500">
+              {completed} of {total} files
+            </span>
+            {onCancel && currentFile && (
+              <button
+                onClick={onCancel}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+              >
+                <StopCircle className="h-3.5 w-3.5" />
+                Stop
+              </button>
+            )}
+          </div>
         </div>
         <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
           <div
@@ -42,10 +58,11 @@ export function UploadProgress({ progress }: { progress: UploadProgressData }) {
 
       {completedFiles.length > 0 && (
         <ul className="space-y-1">
-          {completedFiles.map((name) => (
-            <li key={name} className="flex items-center gap-2 text-sm text-green-700">
+          {completedFiles.map((f) => (
+            <li key={f.name} className="flex items-center gap-2 text-sm text-green-700">
               <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-              <span className="truncate">{name}</span>
+              <span className="truncate">{f.name}</span>
+              <span className="text-green-500 text-xs whitespace-nowrap">({f.pages} {f.pages === 1 ? "page" : "pages"})</span>
             </li>
           ))}
         </ul>

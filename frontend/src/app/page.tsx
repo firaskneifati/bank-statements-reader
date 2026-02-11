@@ -91,6 +91,7 @@ export default function Home() {
 
   const [addingMore, setAddingMore] = useState(false);
   const [showAddDropzone, setShowAddDropzone] = useState(false);
+  const cancelRef = useRef(false);
   const [selectedStatement, setSelectedStatement] = useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadProgressData>({
     total: 0,
@@ -103,6 +104,7 @@ export default function Home() {
   const handleUpload = async (files: File[]) => {
     setState("uploading");
     setError("");
+    cancelRef.current = false;
     const progress: UploadProgressData = {
       total: files.length,
       completed: 0,
@@ -117,17 +119,19 @@ export default function Home() {
     let mockMode = false;
 
     for (const file of files) {
+      if (cancelRef.current) break;
       progress.currentFile = file.name;
       setUploadProgress({ ...progress });
 
       try {
         const result = await uploadSingleStatement(file, categories);
         allStatements.push(...result.statements);
-        if (result.usage) latestUsage = result.usage;
+        if (result.usage) { latestUsage = result.usage; setUsage(result.usage); }
         if (result.mock_mode) mockMode = true;
         progress.completed++;
-        progress.completedFiles.push(file.name);
+        progress.completedFiles.push({ name: file.name, pages: result.statements.reduce((sum, s) => sum + s.page_count, 0) });
       } catch (err) {
+        if (cancelRef.current) break;
         progress.completed++;
         progress.failedFiles.push({
           name: file.name,
@@ -145,16 +149,19 @@ export default function Home() {
       setData({ statements: allStatements, mock_mode: mockMode, usage: latestUsage });
       if (latestUsage) setUsage(latestUsage);
       setState("results");
-    } else {
+    } else if (!cancelRef.current) {
       setError(
         `All ${files.length} files failed to process. ${progress.failedFiles.map((f) => `${f.name}: ${f.error}`).join("; ")}`
       );
       setState("error");
+    } else {
+      setState("idle");
     }
   };
 
   const handleAddMore = async (files: File[]) => {
     setAddingMore(true);
+    cancelRef.current = false;
     const progress: UploadProgressData = {
       total: files.length,
       completed: 0,
@@ -165,6 +172,7 @@ export default function Home() {
     setUploadProgress({ ...progress });
 
     for (const file of files) {
+      if (cancelRef.current) break;
       progress.currentFile = file.name;
       setUploadProgress({ ...progress });
 
@@ -181,8 +189,9 @@ export default function Home() {
         });
         if (result.usage) setUsage(result.usage);
         progress.completed++;
-        progress.completedFiles.push(file.name);
+        progress.completedFiles.push({ name: file.name, pages: result.statements.reduce((sum, s) => sum + s.page_count, 0) });
       } catch (err) {
+        if (cancelRef.current) break;
         progress.completed++;
         progress.failedFiles.push({
           name: file.name,
@@ -257,7 +266,7 @@ export default function Home() {
         </>
       )}
 
-      {state === "uploading" && <UploadProgress progress={uploadProgress} />}
+      {state === "uploading" && <UploadProgress progress={uploadProgress} onCancel={() => { cancelRef.current = true; }} />}
 
       {state === "error" && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-6">
@@ -280,7 +289,7 @@ export default function Home() {
 
       {state === "results" && data && (
         <>
-          {addingMore && <UploadProgress progress={uploadProgress} />}
+          {addingMore && <UploadProgress progress={uploadProgress} onCancel={() => { cancelRef.current = true; }} />}
 
           {!addingMore && uploadProgress.failedFiles.length > 0 && (() => {
             const errors = uploadProgress.failedFiles;
