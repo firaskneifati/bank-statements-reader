@@ -1,0 +1,11 @@
+{$DOMAIN:localhost} {
+	# Backend API — direct to FastAPI (bypasses Next.js rewrite)
+	handle /api/v1/* {
+		reverse_proxy backend:8000
+	}
+
+	# Everything else (pages + NextAuth /api/auth/*) — Next.js
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
