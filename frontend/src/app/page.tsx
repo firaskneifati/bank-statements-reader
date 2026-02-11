@@ -9,7 +9,7 @@ import { ExportButtons } from "@/components/ExportButtons";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { UsageBanner } from "@/components/UsageBanner";
 import { UploadProgress, UploadProgressData } from "@/components/UploadProgress";
-import { uploadSingleStatement, uploadStatements, fetchUsage } from "@/lib/api-client";
+import { uploadSingleStatement, fetchUsage } from "@/lib/api-client";
 import { UploadResponse, UsageStats, CategoryConfig, DEFAULT_CATEGORIES } from "@/lib/types";
 import { Header } from "@/components/Header";
 import { AlertCircle, RotateCcw, FileText, Plus } from "lucide-react";
@@ -138,25 +138,48 @@ export default function Home() {
 
   const handleAddMore = async (files: File[]) => {
     setAddingMore(true);
-    try {
-      const result = await uploadStatements(files, categories);
-      setData((prev) => {
-        if (!prev) return result;
-        return {
-          ...prev,
-          statements: [...prev.statements, ...result.statements],
-          usage: result.usage ?? prev.usage,
-        };
-      });
-      if (result.usage) {
-        setUsage(result.usage);
+    const progress: UploadProgressData = {
+      total: files.length,
+      completed: 0,
+      currentFile: null,
+      completedFiles: [],
+      failedFiles: [],
+    };
+    setUploadProgress({ ...progress });
+
+    for (const file of files) {
+      progress.currentFile = file.name;
+      setUploadProgress({ ...progress });
+
+      try {
+        const result = await uploadSingleStatement(file, categories);
+        setData((prev) => {
+          if (!prev) return result;
+          return {
+            ...prev,
+            statements: [...prev.statements, ...result.statements],
+            mock_mode: prev.mock_mode || result.mock_mode,
+            usage: result.usage ?? prev.usage,
+          };
+        });
+        if (result.usage) setUsage(result.usage);
+        progress.completed++;
+        progress.completedFiles.push(file.name);
+      } catch (err) {
+        progress.completed++;
+        progress.failedFiles.push({
+          name: file.name,
+          error: err instanceof Error ? err.message : "Upload failed",
+        });
       }
-      setSelectedStatement(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add statements");
-    } finally {
-      setAddingMore(false);
+
+      setUploadProgress({ ...progress });
     }
+
+    progress.currentFile = null;
+    setUploadProgress({ ...progress });
+    setSelectedStatement(null);
+    setAddingMore(false);
   };
 
   const addMoreInputRef = useRef<HTMLInputElement>(null);
@@ -212,7 +235,9 @@ export default function Home() {
 
       {state === "results" && data && (
         <>
-          {uploadProgress.failedFiles.length > 0 && (
+          {addingMore && <UploadProgress progress={uploadProgress} />}
+
+          {!addingMore && uploadProgress.failedFiles.length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
               <strong>{uploadProgress.failedFiles.length} file{uploadProgress.failedFiles.length !== 1 ? "s" : ""} failed:</strong>{" "}
               {uploadProgress.failedFiles.map((f) => f.name).join(", ")}
@@ -291,7 +316,7 @@ export default function Home() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm font-medium hover:bg-blue-100 disabled:opacity-50 transition-colors"
               >
                 <Plus className="h-4 w-4" />
-                {addingMore ? "Processing..." : "Add More"}
+                Add More
               </button>
               <button
                 onClick={handleReset}
