@@ -22,6 +22,7 @@ from app.db.models import (  # noqa: F401
     ExportLog,
     CategoryTemplate,
     AuditLog,
+    RevokedToken,
 )
 
 config = context.config

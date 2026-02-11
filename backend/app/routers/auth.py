@@ -1,12 +1,16 @@
+from datetime import datetime, timezone
+
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.limiter import limiter
 from app.db.engine import get_session
-from app.db.models import Organization, User
+from app.db.models import Organization, User, RevokedToken
 from app.auth.password import hash_password, verify_password
-from app.auth.jwt import create_access_token
+from app.auth.jwt import create_access_token, decode_access_token
 from app.auth.dependencies import CurrentUser
 from app.auth.totp import generate_totp_secret, get_totp_uri, verify_totp_code
 from app.auth.schemas import (
@@ -119,6 +123,36 @@ async def google_oauth(request: Request, body: GoogleOAuthRequest, session: Asyn
 @router.get("/me", response_model=UserResponse)
 async def me(current_user: CurrentUser):
     return _user_response(current_user)
+
+
+_bearer = HTTPBearer()
+
+
+@router.post("/logout")
+async def logout(
+    request: Request,
+    current_user: CurrentUser,
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    session: AsyncSession = Depends(get_session),
+):
+    payload = decode_access_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+    jti = payload.get("jti")
+    exp = payload.get("exp")
+    if not jti or not exp:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token missing jti or exp claim")
+
+    revoked = RevokedToken(
+        jti=jti,
+        expires_at=datetime.fromtimestamp(exp, tz=timezone.utc).replace(tzinfo=None),
+    )
+    session.add(revoked)
+    await session.commit()
+
+    await log_audit(session, "logout", request, user_id=current_user.id, org_id=current_user.org_id)
+    return {"detail": "Logged out"}
 
 
 # ── 2FA endpoints ────────────────────────────────────────────────────

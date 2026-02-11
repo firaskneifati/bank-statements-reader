@@ -145,3 +145,13 @@ class AuditLog(SQLModel, table=True):
     ip_address: str | None = None
     user_agent: str | None = None
     created_at: datetime = Field(default_factory=_now, index=True)
+
+
+# ── RevokedToken (JWT blocklist) ───────────────────────────────────
+class RevokedToken(SQLModel, table=True):
+    __tablename__ = "revoked_tokens"
+
+    id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
+    jti: str = Field(unique=True, index=True)
+    expires_at: datetime
+    created_at: datetime = Field(default_factory=_now)
