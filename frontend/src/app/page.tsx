@@ -90,6 +90,7 @@ export default function Home() {
   };
 
   const [addingMore, setAddingMore] = useState(false);
+  const [showAddDropzone, setShowAddDropzone] = useState(false);
   const [selectedStatement, setSelectedStatement] = useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadProgressData>({
     total: 0,
@@ -372,37 +373,38 @@ export default function Home() {
                 </span>
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <ExportButtons transactions={filteredTransactions} />
-              <input
-                ref={addMoreInputRef}
-                type="file"
-                accept=".pdf"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  const files = Array.from(e.target.files ?? []);
-                  if (files.length > 0) handleAddMore(files);
-                  e.target.value = "";
-                }}
-              />
               <button
-                onClick={() => addMoreInputRef.current?.click()}
+                onClick={() => setShowAddDropzone(!showAddDropzone)}
                 disabled={addingMore}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm font-medium hover:bg-blue-100 disabled:opacity-50 transition-colors"
+                className={`inline-flex items-center gap-2 px-3 py-2 border rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+                  showAddDropzone
+                    ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                    : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                }`}
               >
                 <Plus className="h-4 w-4" />
                 Add More
               </button>
               <button
                 onClick={handleDiscard}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
               >
                 <Trash2 className="h-4 w-4" />
                 Discard
               </button>
             </div>
           </div>
+
+          {showAddDropzone && !addingMore && (
+            <FileUploader
+              onUpload={(files) => {
+                setShowAddDropzone(false);
+                handleAddMore(files);
+              }}
+            />
+          )}
 
           <TransactionTable transactions={filteredTransactions} />
         </>

@@ -54,7 +54,7 @@ export function UsageBanner({ usage, loading }: UsageBannerProps) {
                 isAtLimit ? "text-red-700" : isNearLimit ? "text-amber-700" : "text-blue-700"
               }`}
             >
-              Pages
+              Pages Processed
             </span>
           </div>
           <div className="flex items-baseline gap-1">
@@ -73,7 +73,16 @@ export function UsageBanner({ usage, loading }: UsageBannerProps) {
               / {formatNumber(pagesLimit)}
             </span>
           </div>
-          <div className="mt-2 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+          <p
+            className={`text-xs mt-1 ${
+              isAtLimit ? "text-red-500" : isNearLimit ? "text-amber-500" : "text-blue-400"
+            }`}
+          >
+            {isAtLimit
+              ? "Limit reached — uploads disabled"
+              : `${formatNumber(Math.max(0, pagesLimit - pagesUsed))} pages remaining`}
+          </p>
+          <div className="mt-1.5 h-1.5 rounded-full bg-gray-200 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${
                 isAtLimit ? "bg-red-500" : isNearLimit ? "bg-amber-500" : "bg-blue-500"
