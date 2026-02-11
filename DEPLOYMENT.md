@@ -1,68 +1,162 @@
 # Production Deployment
 
-## Prerequisites
+## Architecture
 
-- A VPS or server with Docker and Docker Compose installed
-- A domain name with DNS pointing to your server's IP
-- Ports 80 and 443 open
+```
+bankread.ai      → Cloudflare (proxy) → Vercel  (Next.js frontend)
+api.bankread.ai  → Cloudflare (proxy) → Hetzner (FastAPI + PostgreSQL + Caddy)
+```
 
-## Setup
+---
 
-1. Clone the repo on your server:
+## 1. Hetzner VPS Setup
+
+### Create a server
+
+1. Sign up at [hetzner.com/cloud](https://www.hetzner.com/cloud/)
+2. Create project → Add Server
+3. Location: **Ashburn** (US East, closest to Cloudflare/Vercel edge)
+4. Image: **Ubuntu 22.04**
+5. Type: **CX22** — 2 vCPU, 4 GB RAM, 40 GB NVMe (~$4.50/mo)
+6. SSH Key: Add your public key (or create one)
+7. Name: `bankread-api` → Create
+
+Note the server's **IPv4 address** — you'll need it for Cloudflare DNS.
+
+### Firewall (recommended)
+
+In Hetzner Cloud Console → Firewalls → Create:
+
+| Direction | Port | Protocol | Source    |
+|-----------|------|----------|-----------|
+| Inbound   | 22   | TCP      | Any       |
+| Inbound   | 80   | TCP      | Any       |
+| Inbound   | 443  | TCP      | Any       |
+
+Attach the firewall to the `bankread-api` server.
+
+### Install Docker
+
+SSH into the server:
 
 ```bash
-git clone git@github.com:firaskneifati/bank-statements-reader.git
+ssh root@<server-ip>
+
+# Install Docker
+curl -fsSL https://get.docker.com | sh
+
+# Install Docker Compose plugin
+apt-get install -y docker-compose-plugin
+
+# Verify
+docker --version
+docker compose version
+```
+
+---
+
+## 2. Cloudflare DNS
+
+In your Cloudflare dashboard for `bankread.ai`:
+
+| Type  | Name  | Content                | Proxy  |
+|-------|-------|------------------------|--------|
+| A     | `api` | `<Hetzner server IP>`   | Orange (proxied) |
+| CNAME | `@`   | `cname.vercel-dns.com` | DNS only (grey)  |
+
+**Important:** The root `@` record must be **DNS only** (grey cloud) for Vercel — Vercel manages its own SSL.
+
+### Cloudflare SSL settings (for api.bankread.ai)
+
+1. SSL/TLS → Overview → Set mode to **Full** (not "Full Strict")
+2. This allows Cloudflare to accept Caddy's internal (self-signed) certificate on the origin
+
+---
+
+## 3. Deploy Backend to Hetzner
+
+SSH into the server:
+
+```bash
+# Clone the repo
+git clone https://github.com/firaskneifati/bank-statements-reader.git
 cd bank-statements-reader
-```
 
-2. Create your production env file:
-
-```bash
+# Create production env file
 cp .env.production.example .env.production
-```
-
-3. Fill in the values:
-
-```bash
-# Generate secrets
-openssl rand -hex 32  # use for POSTGRES_PASSWORD
-openssl rand -hex 32  # use for JWT_SECRET
 ```
 
 Edit `.env.production`:
 
-```
-DOMAIN=app.yourdomain.com
+```bash
+DOMAIN=bankread.ai
+API_DOMAIN=api.bankread.ai
 POSTGRES_USER=bankuser
-POSTGRES_PASSWORD=<generated>
+POSTGRES_PASSWORD=<run: openssl rand -hex 32>
 POSTGRES_DB=bankstatements
-JWT_SECRET=<generated>
+JWT_SECRET=<run: openssl rand -hex 32>
 ANTHROPIC_API_KEY=<from console.anthropic.com>
 ```
 
-4. Deploy:
+Deploy:
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d
 ```
 
-Caddy automatically provisions HTTPS via Let's Encrypt. No extra SSL configuration needed.
-
-5. Run database migrations:
+Run database migrations:
 
 ```bash
 docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
 ```
 
+Verify:
+
+```bash
+curl -k https://localhost/
+# Should return: {"status":"ok"}
+```
+
+---
+
+## 4. Deploy Frontend to Vercel
+
+### Connect the repo
+
+1. Go to [vercel.com](https://vercel.com) → Import project
+2. Select the `bank-statements-reader` repo
+3. Set **Root Directory** to `frontend`
+4. Framework Preset: **Next.js** (auto-detected)
+
+### Set environment variables
+
+In Vercel project settings → Environment Variables:
+
+| Key              | Value                        |
+|------------------|------------------------------|
+| `BACKEND_URL`    | `https://api.bankread.ai`    |
+| `NEXTAUTH_URL`   | `https://bankread.ai`        |
+| `NEXTAUTH_SECRET`| `<same JWT_SECRET as backend>` |
+| `AUTH_TRUST_HOST` | `true`                      |
+
+### Add custom domain
+
+1. Vercel project → Settings → Domains → Add `bankread.ai`
+2. Vercel will show verification instructions (already handled by the CNAME record above)
+
+---
+
 ## Verify
 
-- Visit `https://yourdomain.com` — should load the app over HTTPS
-- Check `https://yourdomain.com/api/v1/` — should return `{"status":"ok"}`
-- Open browser DevTools → Network → check response headers for security headers
+- `https://bankread.ai` — should load the app
+- `https://api.bankread.ai/` — should return `{"status":"ok"}`
+- Try registering and logging in
+
+---
 
 ## Common Operations
 
-**View logs:**
+**View backend logs:**
 
 ```bash
 docker compose -f docker-compose.prod.yml logs -f
@@ -77,23 +171,11 @@ docker compose -f docker-compose.prod.yml restart backend
 **Rebuild after code changes:**
 
 ```bash
+cd bank-statements-reader
+git pull
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-**Stop everything:**
+**Redeploy frontend:**
 
-```bash
-docker compose -f docker-compose.prod.yml down
-```
-
-## Architecture
-
-```
-Internet → Caddy (:443 HTTPS) → Frontend (Next.js :3000)
-                               → Backend  (FastAPI :8000) → Postgres (:5432)
-```
-
-- **Caddy** handles SSL termination and routing (`/api/v1/*` → backend, everything else → frontend)
-- **Backend** runs 4 uvicorn workers (no `--reload`)
-- **Frontend** runs a production Next.js build (`pnpm start`)
-- **Postgres** data persists in a Docker volume
+Push to `main` — Vercel auto-deploys.

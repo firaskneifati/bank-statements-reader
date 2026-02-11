@@ -9,9 +9,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     environment:
-      DOMAIN: ${DOMAIN:-localhost}
+      API_DOMAIN: ${API_DOMAIN:-localhost}
     depends_on:
-      - frontend
       - backend
     restart: unless-stopped
 
@@ -37,26 +36,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       MOCK_MODE: "false"
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      ALLOWED_ORIGINS: https://${DOMAIN:-localhost}
+      ALLOWED_ORIGINS: https://${DOMAIN:-bankread.ai}
       JWT_SECRET: ${JWT_SECRET}
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-10}
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     depends_on:
       postgres:
         condition: service_healthy
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.prod
-    environment:
-      NEXTAUTH_URL: https://${DOMAIN:-localhost}
-      NEXTAUTH_SECRET: ${JWT_SECRET}
-      BACKEND_URL: http://backend:8000
-      AUTH_TRUST_HOST: "true"
-    depends_on:
-      - backend
     restart: unless-stopped
 
 volumes:
