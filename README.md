@@ -8,7 +8,7 @@ A SaaS MVP that parses any bank's PDF statements (chequing, savings, credit card
 Browser (Next.js :4000)                    FastAPI Backend (:8000)
 ┌──────────────────┐                    ┌────────────────────────┐
 │  NextAuth.js v5  │                    │  Auth Router           │
-│  (JWT sessions)  │──Bearer token──>   │  (register/login/me)   │
+│  (credentials)   │──Bearer token──>   │  (register/login/me)   │
 │                  │                    │  JWT verification      │
 │  Drag-and-Drop   │──POST /upload──>   │  Upload Router         │
 │  Upload Zone     │  (multipart)       │    ↓                   │
@@ -28,14 +28,13 @@ Browser (Next.js :4000)                    FastAPI Backend (:8000)
 ```
 Frontend (NextAuth.js v5)              Backend (FastAPI)
 ├── Issues JWT via NEXTAUTH_SECRET     ├── Verifies JWT via JWT_SECRET (same value)
-├── Credentials + Google providers     ├── POST /api/v1/auth/register
+├── Credentials provider               ├── POST /api/v1/auth/register
 ├── Middleware protects routes          ├── POST /api/v1/auth/login
-└── Sends Bearer token to API          ├── POST /api/v1/auth/oauth/google
-                                       ├── GET  /api/v1/auth/me
+└── Sends Bearer token to API          ├── GET  /api/v1/auth/me
                                        └── Protected: /upload, /export (401 without token)
 ```
 
-Next.js `rewrites` proxies `/api/*` to `localhost:8000` during dev — no CORS issues.
+Next.js `rewrites` proxies `/api/v1/*` to the backend during dev — no CORS issues.
 
 ## Features
 
@@ -57,7 +56,6 @@ Next.js `rewrites` proxies `/api/*` to `localhost:8000` during dev — no CORS i
 | GET | `/` | No | — | `{"status": "ok"}` |
 | POST | `/api/v1/auth/register` | No | `{"email", "password", "full_name", "organization_name?"}` | `AuthResponse` (token + user) |
 | POST | `/api/v1/auth/login` | No | `{"email", "password"}` | `AuthResponse` (token + user) |
-| POST | `/api/v1/auth/oauth/google` | No | `{"email", "name", "google_id"}` | `AuthResponse` (token + user) |
 | GET | `/api/v1/auth/me` | Bearer | — | `UserResponse` |
 | POST | `/api/v1/upload` | Bearer | multipart `files: List[UploadFile]`, optional `categories: str` (JSON) | `UploadResponse` JSON |
 | POST | `/api/v1/export` | Bearer | `ExportRequest` JSON | Binary file download (CSV or XLSX) |
@@ -94,7 +92,7 @@ Next.js `rewrites` proxies `/api/*` to `localhost:8000` during dev — no CORS i
 
 **Frontend:**
 - Next.js 15 + React 19 + TypeScript
-- NextAuth.js v5 (Credentials + Google OAuth)
+- NextAuth.js v5 (Credentials provider)
 - Tailwind CSS v4
 - react-dropzone (file upload)
 - @tanstack/react-table (sortable tables)
@@ -134,7 +132,7 @@ bank-statements-reader/
 │       │   └── transaction.py    # Transaction, StatementResult, UploadResponse, ExportRequest
 │       ├── routers/
 │       │   ├── __init__.py
-│       │   ├── auth.py           # POST register/login/oauth/google, GET /me
+│       │   ├── auth.py           # POST register/login, GET /me
 │       │   ├── upload.py         # POST /upload — concurrent file processing (protected)
 │       │   └── export.py         # POST /export — CSV/Excel generation (protected)
 │       └── services/
@@ -151,7 +149,7 @@ bank-statements-reader/
 │   ├── next.config.js            # Rewrites proxy + 5-min proxy timeout
 │   ├── postcss.config.mjs
 │   └── src/
-│       ├── auth.ts               # NextAuth.js v5 config (Credentials + Google providers)
+│       ├── auth.ts               # NextAuth.js v5 config (Credentials provider)
 │       ├── middleware.ts          # Route protection (redirects unauthenticated to /sign-in)
 │       ├── types/
 │       │   └── next-auth.d.ts    # NextAuth type augmentation (Session, User, JWT)
@@ -160,8 +158,8 @@ bank-statements-reader/
 │       │   ├── layout.tsx        # Root layout with SessionProvider
 │       │   ├── page.tsx          # Main page: Header + upload → loading → results
 │       │   ├── api/auth/[...nextauth]/route.ts  # NextAuth API handler
-│       │   ├── sign-in/[[...sign-in]]/page.tsx  # Sign-in page
-│       │   └── sign-up/[[...sign-up]]/page.tsx  # Sign-up page
+│       │   ├── sign-in/[[...sign-in]]/page.tsx  # Email/password sign-in
+│       │   └── sign-up/[[...sign-up]]/page.tsx  # Registration (auto signs in after)
 │       ├── lib/
 │       │   ├── types.ts          # TypeScript interfaces, CategoryConfig, DEFAULT_CATEGORIES
 │       │   └── api-client.ts     # uploadStatements() + exportTransactions() with auth headers
@@ -277,8 +275,6 @@ Open http://localhost:4000, drag-drop any PDF, view the sortable transaction tab
 |----------|---------|-------------|
 | `NEXTAUTH_URL` | `http://localhost:4000` | NextAuth.js base URL |
 | `NEXTAUTH_SECRET` | — | **Required.** Must match `JWT_SECRET` in backend. |
-| `GOOGLE_CLIENT_ID` | — | Google OAuth client ID (optional — leave blank to disable Google sign-in) |
-| `GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret |
 
 ### Switching from Mock to Real Mode
 
@@ -433,7 +429,7 @@ The PDF may be scanned/image-based. In mock mode (`MOCK_MODE=true`), any PDF wil
 
 ## SaaS Transformation Plan
 
-Transforming the current stateless single-page MVP into a production multi-tenant SaaS. Accountants manage clients and their bank statements; clients can log in to upload their own. Full database persistence, Clerk auth, Stripe billing (sandbox), accounting export formats, and Docker/production deployment.
+Transforming the current stateless single-page MVP into a production multi-tenant SaaS. Accountants manage clients and their bank statements; clients can log in to upload their own. Full database persistence, NextAuth.js auth, Stripe billing (sandbox), accounting export formats, and Docker/production deployment.
 
 ### Key Architecture Decisions
 
@@ -442,6 +438,7 @@ Transforming the current stateless single-page MVP into a production multi-tenan
 3. **Upload/export endpoints are protected** — require a valid Bearer token (JWT)
 4. **Client portal via org roles** — clients join org as role=`client`, frontend middleware routes by role
 5. **Categories move to DB** — per-org CategoryTemplate table replaces localStorage
+6. **Google OAuth disabled** — Google provider removed until OAuth credentials are configured
 
 ### Dependency Graph
 
@@ -497,9 +494,9 @@ Cross-cutting: Privacy & Compliance (see full section below) — woven through a
 
 | Table | Key Fields |
 |-------|-----------|
-| **Organization** | id (uuid), name, clerk_org_id, stripe_customer_id, stripe_subscription_id, plan ("free"/"starter"/"pro"/"enterprise") |
-| **User** | id (uuid), clerk_user_id, email, full_name, role ("owner"/"admin"/"member"), org_id FK |
-| **Client** | id (uuid), org_id FK, name, email, clerk_user_id (nullable), phone, notes |
+| **Organization** | id (uuid), name, stripe_customer_id, stripe_subscription_id, plan ("free"/"starter"/"pro"/"enterprise") |
+| **User** | id (uuid), email (unique, indexed), password_hash, auth_provider, full_name, role ("owner"/"admin"/"member"), org_id FK |
+| **Client** | id (uuid), org_id FK, name, email, phone, notes |
 | **Upload** | id (uuid), org_id FK, client_id FK (nullable), uploaded_by_user_id FK, filename, status ("processing"/"completed"/"failed"), transaction_count, total_debits, total_credits |
 | **TransactionRecord** | id (uuid), org_id FK, upload_id FK, client_id FK (nullable), date, posting_date, description, amount, type, balance, category |
 | **CategoryTemplate** | id (uuid), org_id FK, name, description, sort_order |
@@ -512,7 +509,7 @@ Cross-cutting: Privacy & Compliance (see full section below) — woven through a
 
 ### Chunk 3: NextAuth Backend Auth
 
-**Goal:** JWT-based authentication. Register, login, Google OAuth endpoints. Protect upload/export routes.
+**Goal:** JWT-based authentication. Register, login endpoints. Protect upload/export routes.
 
 **New deps:** `python-jose[cryptography]==3.3.0`, `passlib[bcrypt]==1.7.4`, `email-validator>=2.0.0`
 
@@ -521,11 +518,11 @@ Cross-cutting: Privacy & Compliance (see full section below) — woven through a
 - `backend/app/auth/password.py` — `hash_password()`, `verify_password()` using bcrypt
 - `backend/app/auth/jwt.py` — `create_access_token()`, `decode_access_token()` using python-jose (HS256, shared secret with NextAuth)
 - `backend/app/auth/dependencies.py` — `get_current_user()` FastAPI dependency, `CurrentUser` type alias
-- `backend/app/auth/schemas.py` — `RegisterRequest`, `LoginRequest`, `GoogleOAuthRequest`, `AuthResponse`, `UserResponse`
-- `backend/app/routers/auth.py` — `POST /register`, `POST /login`, `POST /oauth/google`, `GET /me`
+- `backend/app/auth/schemas.py` — `RegisterRequest`, `LoginRequest`, `AuthResponse`, `UserResponse`
+- `backend/app/routers/auth.py` — `POST /register`, `POST /login`, `GET /me`
 
 **Modify:**
-- `backend/app/db/models.py` — remove `clerk_org_id`, `clerk_user_id`; add `email` (unique+indexed), `password_hash`, `auth_provider`
+- `backend/app/db/models.py` — `email` (unique+indexed), `password_hash`, `auth_provider` fields on User
 - `backend/app/config.py` — add `jwt_secret`, `jwt_algorithm`
 - `backend/app/main.py` — register auth router at `/api/v1/auth`
 - `backend/app/routers/upload.py` — add `CurrentUser` dependency
@@ -542,11 +539,11 @@ Cross-cutting: Privacy & Compliance (see full section below) — woven through a
 **New dep:** `next-auth@beta` (v5)
 
 **Create:**
-- `frontend/src/auth.ts` — NextAuth config (Credentials + Google providers, JWT/session callbacks)
+- `frontend/src/auth.ts` — NextAuth config (Credentials provider, JWT/session callbacks)
 - `frontend/src/middleware.ts` — route protection via `auth` middleware (redirects unauthenticated to `/sign-in`)
 - `frontend/src/types/next-auth.d.ts` — type augmentation for Session, User, JWT
 - `frontend/src/app/api/auth/[...nextauth]/route.ts` — NextAuth API handler
-- `frontend/src/app/sign-in/[[...sign-in]]/page.tsx` — email/password form + Google sign-in
+- `frontend/src/app/sign-in/[[...sign-in]]/page.tsx` — email/password sign-in form
 - `frontend/src/app/sign-up/[[...sign-up]]/page.tsx` — registration form (calls backend `/register` then auto-signs in)
 - `frontend/src/components/Header.tsx` — user info + sign out button
 
@@ -712,7 +709,7 @@ Cross-cutting: Privacy & Compliance (see full section below) — woven through a
 - `backend/railway.toml` — `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - `backend/Procfile` — fallback for Railway
 
-**Env vars for Vercel:** `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_API_URL`
+**Env vars for Vercel:** `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `NEXT_PUBLIC_API_URL`
 
 **Env vars for Railway:** `DATABASE_URL` (auto), `ANTHROPIC_API_KEY`, `JWT_SECRET`, `STRIPE_*`, `ALLOWED_ORIGINS`, `MOCK_MODE=false`
 
@@ -1048,13 +1045,15 @@ Design incident response around the **strictest applicable timelines**:
 
 ---
 
-### Current Status (MVP)
+### Current Status
 
+- Chunks 1-4 complete: Docker Compose, PostgreSQL schema, backend JWT auth, frontend NextAuth.js
 - Uploaded files are saved temporarily and deleted immediately after processing
 - Anthropic API data is NOT used for training
-- No data is persisted between requests (no database yet)
-- API keys stored in `.env` which is git-ignored
-- Full compliance implementation planned across Chunks 2-12 above
+- Database stores users, organizations, and schema for uploads/transactions (upload persistence in Chunk 5)
+- API keys and secrets stored in `.env` which is git-ignored
+- Google OAuth disabled — credentials provider only (Google can be re-enabled by configuring OAuth credentials)
+- Full compliance implementation planned across Chunks 5-12 above
 
 ## Verification
 
