@@ -179,3 +179,42 @@ docker compose -f docker-compose.prod.yml up -d --build
 **Redeploy frontend:**
 
 Push to `main` — Vercel auto-deploys.
+
+---
+
+## Management CLI
+
+The `manage.py` script handles user creation and usage reporting.
+
+### Local
+
+```bash
+cd backend
+source venv/bin/activate
+python manage.py <command>
+```
+
+### Production (Hetzner)
+
+```bash
+source ~/.zshrc && git-acc firaskneifati
+ssh root@157.180.21.148
+cd bank-statements-reader
+docker compose -f docker-compose.prod.yml --env-file .env.production exec backend python manage.py <command>
+```
+
+### Commands
+
+**Create a user:**
+
+```bash
+python manage.py create-user --email user@example.com --password "securepass" --name "Jane Doe"
+# Optional: --org "Company Name" (defaults to "<name>'s Organization")
+```
+
+**View usage stats:**
+
+```bash
+python manage.py usage
+# Shows per-user uploads, documents, pages, transactions, exports, and totals
+```
