@@ -94,8 +94,10 @@ async def _parse_with_claude(
         start = response_text.index("```") + 3
         if response_text[start:].startswith("json"):
             start += 4
-        end = response_text.index("```", start)
-        response_text = response_text[start:end].strip()
+        # Find closing backticks, fall back to end of string
+        rest = response_text[start:]
+        end_idx = rest.find("```")
+        response_text = rest[:end_idx].strip() if end_idx != -1 else rest.strip()
 
     data = json.loads(response_text)
     return [Transaction(**t) for t in data]
