@@ -25,9 +25,6 @@ export function Header() {
             <p className="text-sm font-medium text-gray-900">
               {session.user.name || session.user.email}
             </p>
-            <p className="text-xs text-gray-500 capitalize">
-              {session.user.role}
-            </p>
           </div>
           <Link
             href="/settings/security"
