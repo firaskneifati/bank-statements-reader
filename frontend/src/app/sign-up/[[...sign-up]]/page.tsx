@@ -4,6 +4,8 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 
+const registrationOpen = process.env.NEXT_PUBLIC_REGISTRATION_OPEN === "true";
+
 export default function SignUpPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -48,7 +50,28 @@ export default function SignUpPage() {
     }
   };
 
-return (
+  if (!registrationOpen) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 sm:px-6 lg:px-8 pb-24">
+        <div className="max-w-md w-full text-center space-y-4">
+          <h2 className="text-3xl font-bold text-gray-900">
+            Registration Closed
+          </h2>
+          <p className="text-gray-600">
+            New account registration is currently closed.
+          </p>
+          <Link
+            href="/sign-in"
+            className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            Sign in
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 sm:px-6 lg:px-8 pb-24">
       <div className="max-w-md w-full space-y-8">
         <div>
@@ -144,7 +167,6 @@ return (
             {loading ? "Creating account..." : "Create account"}
           </button>
         </form>
-
       </div>
     </div>
   );

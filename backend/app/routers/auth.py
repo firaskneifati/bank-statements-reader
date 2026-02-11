@@ -23,6 +23,7 @@ from app.auth.schemas import (
     TotpVerifyRequest,
     TotpDisableRequest,
 )
+from app.config import settings
 from app.services.audit import log_audit
 
 router = APIRouter()
@@ -43,6 +44,8 @@ def _user_response(user: User) -> UserResponse:
 @router.post("/register", response_model=AuthResponse)
 @limiter.limit("3/minute")
 async def register(request: Request, body: RegisterRequest, session: AsyncSession = Depends(get_session)):
+    if not settings.registration_open:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Registration is currently closed")
     existing = await session.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")

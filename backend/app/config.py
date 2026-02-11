@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     max_file_size_mb: int = 10
     jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
+    registration_open: bool = False
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
