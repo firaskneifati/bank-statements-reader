@@ -9,6 +9,37 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return {};
 }
 
+export async function uploadSingleStatement(
+  file: File,
+  categories?: CategoryConfig[]
+): Promise<UploadResponse> {
+  const formData = new FormData();
+  formData.append("files", file);
+  if (categories && categories.length > 0) {
+    formData.append("categories", JSON.stringify(categories));
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min per file
+
+  const authHeaders = await getAuthHeaders();
+
+  const response = await fetch("/api/v1/upload", {
+    method: "POST",
+    headers: { ...authHeaders },
+    body: formData,
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: "Upload failed" }));
+    throw new Error(error.detail || `Upload failed (${response.status})`);
+  }
+
+  return response.json();
+}
+
 export async function uploadStatements(
   files: File[],
   categories?: CategoryConfig[]

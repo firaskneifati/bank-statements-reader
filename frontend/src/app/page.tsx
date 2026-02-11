@@ -8,7 +8,8 @@ import { TransactionTable } from "@/components/TransactionTable";
 import { ExportButtons } from "@/components/ExportButtons";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { UsageBanner } from "@/components/UsageBanner";
-import { uploadStatements, fetchUsage } from "@/lib/api-client";
+import { UploadProgress, UploadProgressData } from "@/components/UploadProgress";
+import { uploadSingleStatement, uploadStatements, fetchUsage } from "@/lib/api-client";
 import { UploadResponse, UsageStats, CategoryConfig, DEFAULT_CATEGORIES } from "@/lib/types";
 import { Header } from "@/components/Header";
 import { AlertCircle, RotateCcw, FileText, Plus } from "lucide-react";
@@ -27,7 +28,7 @@ function loadCategories(): CategoryConfig[] {
   return DEFAULT_CATEGORIES;
 }
 
-type AppState = "idle" | "loading" | "results" | "error";
+type AppState = "idle" | "uploading" | "loading" | "results" | "error";
 
 export default function Home() {
   const { status: sessionStatus } = useSession();
@@ -57,19 +58,80 @@ export default function Home() {
 
   const [addingMore, setAddingMore] = useState(false);
   const [selectedStatement, setSelectedStatement] = useState<number | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgressData>({
+    total: 0,
+    completed: 0,
+    currentFile: null,
+    completedFiles: [],
+    failedFiles: [],
+  });
 
   const handleUpload = async (files: File[]) => {
-    setState("loading");
-    setError("");
-    try {
-      const result = await uploadStatements(files, categories);
-      setData(result);
-      if (result.usage) {
-        setUsage(result.usage);
+    if (files.length === 1) {
+      // Single file — use simple loading state
+      setState("loading");
+      setError("");
+      try {
+        const result = await uploadSingleStatement(files[0], categories);
+        setData(result);
+        if (result.usage) setUsage(result.usage);
+        setState("results");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An unexpected error occurred");
+        setState("error");
       }
+      return;
+    }
+
+    // Multiple files — upload one at a time with progress
+    setState("uploading");
+    setError("");
+    const progress: UploadProgressData = {
+      total: files.length,
+      completed: 0,
+      currentFile: null,
+      completedFiles: [],
+      failedFiles: [],
+    };
+    setUploadProgress({ ...progress });
+
+    const allStatements: UploadResponse["statements"] = [];
+    let latestUsage: UsageStats | null = null;
+    let mockMode = false;
+
+    for (const file of files) {
+      progress.currentFile = file.name;
+      setUploadProgress({ ...progress });
+
+      try {
+        const result = await uploadSingleStatement(file, categories);
+        allStatements.push(...result.statements);
+        if (result.usage) latestUsage = result.usage;
+        if (result.mock_mode) mockMode = true;
+        progress.completed++;
+        progress.completedFiles.push(file.name);
+      } catch (err) {
+        progress.completed++;
+        progress.failedFiles.push({
+          name: file.name,
+          error: err instanceof Error ? err.message : "Upload failed",
+        });
+      }
+
+      setUploadProgress({ ...progress });
+    }
+
+    progress.currentFile = null;
+    setUploadProgress({ ...progress });
+
+    if (allStatements.length > 0) {
+      setData({ statements: allStatements, mock_mode: mockMode, usage: latestUsage });
+      if (latestUsage) setUsage(latestUsage);
       setState("results");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } else {
+      setError(
+        `All ${files.length} files failed to process. ${progress.failedFiles.map((f) => `${f.name}: ${f.error}`).join("; ")}`
+      );
       setState("error");
     }
   };
@@ -127,6 +189,8 @@ export default function Home() {
 
       {state === "loading" && <LoadingSpinner />}
 
+      {state === "uploading" && <UploadProgress progress={uploadProgress} />}
+
       {state === "error" && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-6">
           <div className="flex items-start gap-3">
@@ -148,6 +212,13 @@ export default function Home() {
 
       {state === "results" && data && (
         <>
+          {uploadProgress.failedFiles.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+              <strong>{uploadProgress.failedFiles.length} file{uploadProgress.failedFiles.length !== 1 ? "s" : ""} failed:</strong>{" "}
+              {uploadProgress.failedFiles.map((f) => f.name).join(", ")}
+            </div>
+          )}
+
           {data.mock_mode && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
               Mock mode is active. Showing sample data. Set MOCK_MODE=false with an API key for real parsing.
