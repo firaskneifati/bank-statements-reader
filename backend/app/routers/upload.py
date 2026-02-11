@@ -15,6 +15,7 @@ from app.auth.dependencies import CurrentUser
 from app.limiter import limiter
 from app.db.engine import get_session
 from app.db.models import Upload, Organization
+from app.services.audit import log_audit
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +164,11 @@ async def upload_statements(
         if org:
             await session.refresh(org)
             usage = _usage_from_org(org)
+        await log_audit(
+            session, "upload", request,
+            user_id=current_user.id, org_id=current_user.org_id,
+            detail=f"{doc_count} files, {total_pages} pages, {total_txns} transactions",
+        )
     except Exception:
         logger.exception("Failed to record upload usage — user still gets results")
         await session.rollback()

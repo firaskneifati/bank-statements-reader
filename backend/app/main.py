@@ -10,7 +10,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.limiter import limiter
-from app.routers import upload, export, auth, usage
+from app.routers import upload, export, auth, usage, audit_router
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,7 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(upload.router, prefix="/api/v1")
 app.include_router(export.router, prefix="/api/v1")
 app.include_router(usage.router, prefix="/api/v1")
+app.include_router(audit_router.router, prefix="/api/v1", tags=["audit"])
 
 os.makedirs(settings.upload_dir, exist_ok=True)
 

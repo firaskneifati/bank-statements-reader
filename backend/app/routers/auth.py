@@ -19,6 +19,7 @@ from app.auth.schemas import (
     TotpVerifyRequest,
     TotpDisableRequest,
 )
+from app.services.audit import log_audit
 
 router = APIRouter()
 
@@ -59,6 +60,7 @@ async def register(request: Request, body: RegisterRequest, session: AsyncSessio
     await session.refresh(user)
 
     token = create_access_token({"sub": str(user.id)})
+    await log_audit(session, "register", request, user_id=user.id, org_id=org.id, detail=body.email)
     return AuthResponse(access_token=token, user=_user_response(user))
 
 
@@ -69,21 +71,25 @@ async def login(request: Request, body: LoginRequest, session: AsyncSession = De
     user = result.scalar_one_or_none()
 
     if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
+        await log_audit(session, "login_failed", request, detail=f"{body.email}: bad credentials")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
     # 2FA gate
     if user.totp_enabled:
         if not body.totp_code:
+            await log_audit(session, "login_failed", request, user_id=user.id, org_id=user.org_id, detail=f"{body.email}: 2fa_required")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="2fa_required")
         if not user.totp_secret or not verify_totp_code(user.totp_secret, body.totp_code):
+            await log_audit(session, "login_failed", request, user_id=user.id, org_id=user.org_id, detail=f"{body.email}: bad 2FA code")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid 2FA code")
 
     token = create_access_token({"sub": str(user.id)})
+    await log_audit(session, "login", request, user_id=user.id, org_id=user.org_id, detail=body.email)
     return AuthResponse(access_token=token, user=_user_response(user))
 
 
 @router.post("/oauth/google", response_model=AuthResponse)
-async def google_oauth(body: GoogleOAuthRequest, session: AsyncSession = Depends(get_session)):
+async def google_oauth(request: Request, body: GoogleOAuthRequest, session: AsyncSession = Depends(get_session)):
     result = await session.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
 
@@ -102,6 +108,9 @@ async def google_oauth(body: GoogleOAuthRequest, session: AsyncSession = Depends
         session.add(user)
         await session.commit()
         await session.refresh(user)
+        await log_audit(session, "register", request, user_id=user.id, org_id=user.org_id, detail=f"{body.email} (google)")
+    else:
+        await log_audit(session, "login", request, user_id=user.id, org_id=user.org_id, detail=f"{body.email} (google)")
 
     token = create_access_token({"sub": str(user.id)})
     return AuthResponse(access_token=token, user=_user_response(user))
@@ -116,7 +125,7 @@ async def me(current_user: CurrentUser):
 
 
 @router.post("/2fa/setup", response_model=TotpSetupResponse)
-async def totp_setup(current_user: CurrentUser, session: AsyncSession = Depends(get_session)):
+async def totp_setup(request: Request, current_user: CurrentUser, session: AsyncSession = Depends(get_session)):
     if current_user.totp_enabled:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="2FA is already enabled")
 
@@ -127,11 +136,13 @@ async def totp_setup(current_user: CurrentUser, session: AsyncSession = Depends(
     await session.commit()
 
     uri = get_totp_uri(secret, current_user.email)
+    await log_audit(session, "2fa_setup", request, user_id=current_user.id, org_id=current_user.org_id)
     return TotpSetupResponse(secret=secret, otpauth_uri=uri)
 
 
 @router.post("/2fa/verify-setup")
 async def totp_verify_setup(
+    request: Request,
     body: TotpVerifyRequest,
     current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
@@ -147,11 +158,13 @@ async def totp_verify_setup(
     current_user.totp_enabled = True
     session.add(current_user)
     await session.commit()
+    await log_audit(session, "2fa_enable", request, user_id=current_user.id, org_id=current_user.org_id)
     return {"detail": "2FA enabled successfully"}
 
 
 @router.post("/2fa/disable")
 async def totp_disable(
+    request: Request,
     body: TotpDisableRequest,
     current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
@@ -169,4 +182,5 @@ async def totp_disable(
     current_user.totp_secret = None
     session.add(current_user)
     await session.commit()
+    await log_audit(session, "2fa_disable", request, user_id=current_user.id, org_id=current_user.org_id)
     return {"detail": "2FA disabled successfully"}

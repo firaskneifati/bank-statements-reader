@@ -131,3 +131,17 @@ class CategoryTemplate(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_now)
 
     organization: Organization = Relationship(back_populates="category_templates")
+
+
+# ── AuditLog ────────────────────────────────────────────────────────
+class AuditLog(SQLModel, table=True):
+    __tablename__ = "audit_logs"
+
+    id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
+    org_id: uuid.UUID | None = Field(default=None, foreign_key="organizations.id", index=True)
+    user_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    action: str = Field(index=True)
+    detail: str | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None
+    created_at: datetime = Field(default_factory=_now, index=True)
