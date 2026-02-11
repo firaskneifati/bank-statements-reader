@@ -1,7 +1,8 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
+import Link from "next/link";
 
 export function Header() {
   const { data: session } = useSession();
@@ -28,6 +29,12 @@ export function Header() {
               {session.user.role}
             </p>
           </div>
+          <Link
+            href="/settings/security"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <Settings className="h-4 w-4" />
+          </Link>
           <button
             onClick={() => signOut({ callbackUrl: "/sign-in" })}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"

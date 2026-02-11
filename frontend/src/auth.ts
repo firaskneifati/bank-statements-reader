@@ -10,6 +10,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        totpCode: { label: "TOTP Code", type: "text" },
       },
       async authorize(credentials) {
         try {
@@ -19,6 +20,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             body: JSON.stringify({
               email: credentials?.email,
               password: credentials?.password,
+              totp_code: credentials?.totpCode || null,
             }),
           });
 

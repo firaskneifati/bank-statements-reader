@@ -60,6 +60,8 @@ class User(SQLModel, table=True):
     full_name: str = ""
     role: str = Field(default="member")
     org_id: uuid.UUID = Field(foreign_key="organizations.id", index=True)
+    totp_secret: str | None = None
+    totp_enabled: bool = Field(default=False)
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 

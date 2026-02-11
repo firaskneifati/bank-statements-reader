@@ -25,6 +25,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(max_length=128)
+    totp_code: str | None = None
 
 
 class GoogleOAuthRequest(BaseModel):
@@ -40,9 +41,24 @@ class UserResponse(BaseModel):
     role: str
     org_id: uuid.UUID
     auth_provider: str
+    totp_enabled: bool = False
 
 
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class TotpSetupResponse(BaseModel):
+    secret: str
+    otpauth_uri: str
+
+
+class TotpVerifyRequest(BaseModel):
+    code: str = Field(min_length=6, max_length=6)
+
+
+class TotpDisableRequest(BaseModel):
+    password: str = Field(max_length=128)
+    code: str = Field(min_length=6, max_length=6)
