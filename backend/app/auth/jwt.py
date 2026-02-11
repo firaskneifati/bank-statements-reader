@@ -7,7 +7,7 @@ from app.config import settings
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(days=30))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(hours=24))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 

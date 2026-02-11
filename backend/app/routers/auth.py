@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from app.limiter import limiter
 from app.db.engine import get_session
 from app.db.models import Organization, User
 from app.auth.password import hash_password, verify_password
@@ -30,7 +31,8 @@ def _user_response(user: User) -> UserResponse:
 
 
 @router.post("/register", response_model=AuthResponse)
-async def register(body: RegisterRequest, session: AsyncSession = Depends(get_session)):
+@limiter.limit("3/minute")
+async def register(request: Request, body: RegisterRequest, session: AsyncSession = Depends(get_session)):
     existing = await session.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
@@ -56,7 +58,8 @@ async def register(body: RegisterRequest, session: AsyncSession = Depends(get_se
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)):
+@limiter.limit("5/minute")
+async def login(request: Request, body: LoginRequest, session: AsyncSession = Depends(get_session)):
     result = await session.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
 

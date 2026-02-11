@@ -3,7 +3,7 @@ import json
 import logging
 import os
 import tempfile
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -12,6 +12,7 @@ from app.services.pdf_service import extract_text_from_pdf
 from app.services.llm_service import parse_transactions
 from app.services.categorization_service import categorize_transactions
 from app.auth.dependencies import CurrentUser
+from app.limiter import limiter
 from app.db.engine import get_session
 from app.db.models import Upload, Organization
 
@@ -33,6 +34,12 @@ async def _process_single_file(
 
     contents = await file.read()
     bytes_processed = len(contents)
+
+    if not contents[:5].startswith(b"%PDF-"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"File '{file.filename}' is not a valid PDF",
+        )
 
     if bytes_processed > settings.max_file_size_bytes:
         raise HTTPException(
@@ -94,7 +101,9 @@ def _usage_from_org(org: Organization) -> UsageStats:
 
 
 @router.post("/upload", response_model=UploadResponse)
+@limiter.limit("10/minute")
 async def upload_statements(
+    request: Request,
     current_user: CurrentUser,
     files: list[UploadFile] = File(...),
     categories: str = Form(None),
