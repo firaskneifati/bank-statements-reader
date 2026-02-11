@@ -7,6 +7,9 @@ A SaaS MVP that parses any bank's PDF statements (chequing, savings, credit card
 ```
 Browser (Next.js :4000)                    FastAPI Backend (:8000)
 ┌──────────────────┐                    ┌────────────────────────┐
+│  NextAuth.js v5  │                    │  Auth Router           │
+│  (JWT sessions)  │──Bearer token──>   │  (register/login/me)   │
+│                  │                    │  JWT verification      │
 │  Drag-and-Drop   │──POST /upload──>   │  Upload Router         │
 │  Upload Zone     │  (multipart)       │    ↓                   │
 │                  │                    │  PDF Service           │
@@ -18,6 +21,18 @@ Browser (Next.js :4000)                    FastAPI Backend (:8000)
 │  Export Buttons  │──POST /export──>   │  Categorization        │
 │  (CSV / Excel)   │<──file download──  │  Export Service         │
 └──────────────────┘                    └────────────────────────┘
+```
+
+### Authentication Flow
+
+```
+Frontend (NextAuth.js v5)              Backend (FastAPI)
+├── Issues JWT via NEXTAUTH_SECRET     ├── Verifies JWT via JWT_SECRET (same value)
+├── Credentials + Google providers     ├── POST /api/v1/auth/register
+├── Middleware protects routes          ├── POST /api/v1/auth/login
+└── Sends Bearer token to API          ├── POST /api/v1/auth/oauth/google
+                                       ├── GET  /api/v1/auth/me
+                                       └── Protected: /upload, /export (401 without token)
 ```
 
 Next.js `rewrites` proxies `/api/*` to `localhost:8000` during dev — no CORS issues.
@@ -37,11 +52,15 @@ Next.js `rewrites` proxies `/api/*` to `localhost:8000` during dev — no CORS i
 
 ## API Endpoints
 
-| Method | Path | Request | Response |
-|--------|------|---------|----------|
-| GET | `/` | — | `{"status": "ok"}` |
-| POST | `/api/v1/upload` | multipart `files: List[UploadFile]`, optional `categories: str` (JSON) | `UploadResponse` JSON |
-| POST | `/api/v1/export` | `ExportRequest` JSON | Binary file download (CSV or XLSX) |
+| Method | Path | Auth | Request | Response |
+|--------|------|------|---------|----------|
+| GET | `/` | No | — | `{"status": "ok"}` |
+| POST | `/api/v1/auth/register` | No | `{"email", "password", "full_name", "organization_name?"}` | `AuthResponse` (token + user) |
+| POST | `/api/v1/auth/login` | No | `{"email", "password"}` | `AuthResponse` (token + user) |
+| POST | `/api/v1/auth/oauth/google` | No | `{"email", "name", "google_id"}` | `AuthResponse` (token + user) |
+| GET | `/api/v1/auth/me` | Bearer | — | `UserResponse` |
+| POST | `/api/v1/upload` | Bearer | multipart `files: List[UploadFile]`, optional `categories: str` (JSON) | `UploadResponse` JSON |
+| POST | `/api/v1/export` | Bearer | `ExportRequest` JSON | Binary file download (CSV or XLSX) |
 
 ### Transaction Model
 
@@ -71,9 +90,11 @@ Next.js `rewrites` proxies `/api/*` to `localhost:8000` during dev — no CORS i
 - SQLModel + SQLAlchemy (async) + asyncpg (PostgreSQL ORM)
 - Alembic (database migrations)
 - PostgreSQL 16 (via Docker Compose)
+- python-jose + passlib (JWT auth + bcrypt password hashing)
 
 **Frontend:**
 - Next.js 15 + React 19 + TypeScript
+- NextAuth.js v5 (Credentials + Google OAuth)
 - Tailwind CSS v4
 - react-dropzone (file upload)
 - @tanstack/react-table (sortable tables)
@@ -92,8 +113,14 @@ bank-statements-reader/
 │   ├── .env                      # Your local config (git-ignored)
 │   └── app/
 │       ├── __init__.py
-│       ├── config.py             # Pydantic BaseSettings, env vars
+│       ├── config.py             # Pydantic BaseSettings, env vars (incl JWT_SECRET)
 │       ├── main.py               # FastAPI app, CORS, lifespan, router includes
+│       ├── auth/
+│       │   ├── __init__.py
+│       │   ├── password.py       # bcrypt hash_password / verify_password
+│       │   ├── jwt.py            # create_access_token / decode_access_token (python-jose)
+│       │   ├── dependencies.py   # get_current_user FastAPI dependency, CurrentUser type
+│       │   └── schemas.py        # RegisterRequest, LoginRequest, AuthResponse, etc.
 │       ├── db/
 │       │   ├── __init__.py
 │       │   ├── engine.py         # Async SQLAlchemy engine, session factory, get_session
@@ -107,8 +134,9 @@ bank-statements-reader/
 │       │   └── transaction.py    # Transaction, StatementResult, UploadResponse, ExportRequest
 │       ├── routers/
 │       │   ├── __init__.py
-│       │   ├── upload.py         # POST /upload — concurrent file processing
-│       │   └── export.py         # POST /export — CSV/Excel generation
+│       │   ├── auth.py           # POST register/login/oauth/google, GET /me
+│       │   ├── upload.py         # POST /upload — concurrent file processing (protected)
+│       │   └── export.py         # POST /export — CSV/Excel generation (protected)
 │       └── services/
 │           ├── __init__.py
 │           ├── pdf_service.py           # pdfplumber text extraction
@@ -123,14 +151,22 @@ bank-statements-reader/
 │   ├── next.config.js            # Rewrites proxy + 5-min proxy timeout
 │   ├── postcss.config.mjs
 │   └── src/
+│       ├── auth.ts               # NextAuth.js v5 config (Credentials + Google providers)
+│       ├── middleware.ts          # Route protection (redirects unauthenticated to /sign-in)
+│       ├── types/
+│       │   └── next-auth.d.ts    # NextAuth type augmentation (Session, User, JWT)
 │       ├── app/
 │       │   ├── globals.css
-│       │   ├── layout.tsx        # Root layout with header
-│       │   └── page.tsx          # Main page: upload → loading → results state machine
+│       │   ├── layout.tsx        # Root layout with SessionProvider
+│       │   ├── page.tsx          # Main page: Header + upload → loading → results
+│       │   ├── api/auth/[...nextauth]/route.ts  # NextAuth API handler
+│       │   ├── sign-in/[[...sign-in]]/page.tsx  # Sign-in page
+│       │   └── sign-up/[[...sign-up]]/page.tsx  # Sign-up page
 │       ├── lib/
 │       │   ├── types.ts          # TypeScript interfaces, CategoryConfig, DEFAULT_CATEGORIES
-│       │   └── api-client.ts     # uploadStatements() + exportTransactions() with 5-min timeout
+│       │   └── api-client.ts     # uploadStatements() + exportTransactions() with auth headers
 │       └── components/
+│           ├── Header.tsx            # User info + sign out button
 │           ├── CategoryManager.tsx   # Custom category chips with add/remove/reset
 │           ├── FileUploader.tsx      # Drag-and-drop zone (react-dropzone)
 │           ├── TransactionTable.tsx  # Sortable table with conditional Posting Date column
@@ -223,7 +259,7 @@ Open http://localhost:4000, drag-drop any PDF, view the sortable transaction tab
 
 ## Environment Variables
 
-Configured in `backend/.env` (copy from `.env.example`):
+### Backend (`backend/.env`)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -233,6 +269,16 @@ Configured in `backend/.env` (copy from `.env.example`):
 | `DATABASE_URL` | — | PostgreSQL connection string (e.g. `postgresql+asyncpg://bankuser:bankpass@localhost:5432/bankstatements`). App works without it. |
 | `UPLOAD_DIR` | `uploads` | Directory for temporary file uploads |
 | `MAX_FILE_SIZE_MB` | `10` | Maximum upload file size in MB |
+| `JWT_SECRET` | — | **Required.** Shared secret for signing/verifying JWTs. Must match `NEXTAUTH_SECRET` in frontend. |
+
+### Frontend (`frontend/.env`)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NEXTAUTH_URL` | `http://localhost:4000` | NextAuth.js base URL |
+| `NEXTAUTH_SECRET` | — | **Required.** Must match `JWT_SECRET` in backend. |
+| `GOOGLE_CLIENT_ID` | — | Google OAuth client ID (optional — leave blank to disable Google sign-in) |
+| `GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret |
 
 ### Switching from Mock to Real Mode
 
@@ -391,10 +437,10 @@ Transforming the current stateless single-page MVP into a production multi-tenan
 
 ### Key Architecture Decisions
 
-1. **Clerk JWT verified directly** via JWKS (PyJWT) — no Clerk SDK on hot path, zero vendor lock-in per request
+1. **NextAuth.js v5 + shared JWT secret** — frontend and backend share the same HS256 secret for JWT signing/verification. No vendor lock-in; self-hosted auth.
 2. **`org_id` on every tenant table** — shared DB/schema multi-tenancy, all queries filter by org_id
-3. **Old stateless endpoints kept** — `/api/v1/upload` remains for anonymous/trial; new `/api/v1/uploads` is DB-backed
-4. **Client portal via Clerk org roles** — clients join org as role=`client`, frontend middleware routes by role
+3. **Upload/export endpoints are protected** — require a valid Bearer token (JWT)
+4. **Client portal via org roles** — clients join org as role=`client`, frontend middleware routes by role
 5. **Categories move to DB** — per-org CategoryTemplate table replaces localStorage
 
 ### Dependency Graph
@@ -402,8 +448,8 @@ Transforming the current stateless single-page MVP into a production multi-tenan
 ```
 1 Docker Compose
 └─ 2 Database Schema (+ audit log table)
-   └─ 3 Clerk Backend (+ MFA, GLBA privacy notice endpoint)
-      └─ 4 Clerk Frontend (+ consent capture, cookie banner, GPC detection)
+   └─ 3 NextAuth Backend Auth (JWT, register/login/OAuth)
+      └─ 4 NextAuth Frontend Auth (sign-in/up pages, middleware, session)
          └─ 5 DB-Backed Uploads (+ audit logging, data masking, PII minimization for API)
             ├─ 6 Client Management (+ data export/deletion endpoints)
             │  └─ 8 Client Portal (+ automated decision-making disclosure)
@@ -464,43 +510,52 @@ Cross-cutting: Privacy & Compliance (see full section below) — woven through a
 
 ---
 
-### Chunk 3: Clerk Auth — Backend
+### Chunk 3: NextAuth Backend Auth
 
-**Goal:** JWT verification middleware. Protect new routes, keep old routes unprotected.
+**Goal:** JWT-based authentication. Register, login, Google OAuth endpoints. Protect upload/export routes.
 
-**New deps:** `PyJWT[crypto]==2.10.1`, `httpx==0.28.1`, `svix==1.44.0`
+**New deps:** `python-jose[cryptography]==3.3.0`, `passlib[bcrypt]==1.7.4`, `email-validator>=2.0.0`
 
 **Create:**
 - `backend/app/auth/__init__.py`
-- `backend/app/auth/clerk.py` — `get_current_user(credentials)` verifies Clerk JWT via JWKS (cached in-memory)
-- `backend/app/auth/dependencies.py` — `get_authenticated_user(claims, session)` resolves DB User row; `get_current_org(user, session)` resolves Organization
-- `backend/app/routers/webhooks.py` — `POST /api/v1/webhooks/clerk` handles `user.created`, `organization.created`, `organizationMembership.created` events
+- `backend/app/auth/password.py` — `hash_password()`, `verify_password()` using bcrypt
+- `backend/app/auth/jwt.py` — `create_access_token()`, `decode_access_token()` using python-jose (HS256, shared secret with NextAuth)
+- `backend/app/auth/dependencies.py` — `get_current_user()` FastAPI dependency, `CurrentUser` type alias
+- `backend/app/auth/schemas.py` — `RegisterRequest`, `LoginRequest`, `GoogleOAuthRequest`, `AuthResponse`, `UserResponse`
+- `backend/app/routers/auth.py` — `POST /register`, `POST /login`, `POST /oauth/google`, `GET /me`
 
-**Verify:** `GET /api/v1/me` returns user info with valid Clerk JWT, 401 without. Old endpoints still work unprotected.
+**Modify:**
+- `backend/app/db/models.py` — remove `clerk_org_id`, `clerk_user_id`; add `email` (unique+indexed), `password_hash`, `auth_provider`
+- `backend/app/config.py` — add `jwt_secret`, `jwt_algorithm`
+- `backend/app/main.py` — register auth router at `/api/v1/auth`
+- `backend/app/routers/upload.py` — add `CurrentUser` dependency
+- `backend/app/routers/export.py` — add `CurrentUser` dependency
+
+**Verify:** `POST /api/v1/auth/register` creates user + org, returns JWT. `GET /api/v1/auth/me` returns user info. `POST /api/v1/upload` returns 401 without token.
 
 ---
 
-### Chunk 4: Clerk Auth — Frontend
+### Chunk 4: NextAuth Frontend Auth
 
-**Goal:** Clerk in Next.js. Sign-in/up pages. Authenticated layout with sidebar nav.
+**Goal:** NextAuth.js v5 in Next.js. Sign-in/up pages. Middleware route protection. Bearer token to backend.
 
-**New dep:** `@clerk/nextjs@^6`
+**New dep:** `next-auth@beta` (v5)
 
 **Create:**
-- `frontend/src/middleware.ts` — `clerkMiddleware()`, public routes: `/sign-in`, `/sign-up`, `/api`
-- `frontend/src/app/sign-in/[[...sign-in]]/page.tsx` — Clerk `<SignIn />`
-- `frontend/src/app/sign-up/[[...sign-up]]/page.tsx` — Clerk `<SignUp />` with org creation
-- `frontend/src/app/(authenticated)/layout.tsx` — sidebar (Dashboard, Clients, Uploads, Billing, Settings) + header with `<UserButton />` + `<OrganizationSwitcher />`
-- `frontend/src/app/(authenticated)/dashboard/page.tsx` — moved parser tool from page.tsx
-- `frontend/src/components/Sidebar.tsx` — nav links with active state
-- `frontend/src/components/Header.tsx` — breadcrumbs + Clerk components
+- `frontend/src/auth.ts` — NextAuth config (Credentials + Google providers, JWT/session callbacks)
+- `frontend/src/middleware.ts` — route protection via `auth` middleware (redirects unauthenticated to `/sign-in`)
+- `frontend/src/types/next-auth.d.ts` — type augmentation for Session, User, JWT
+- `frontend/src/app/api/auth/[...nextauth]/route.ts` — NextAuth API handler
+- `frontend/src/app/sign-in/[[...sign-in]]/page.tsx` — email/password form + Google sign-in
+- `frontend/src/app/sign-up/[[...sign-up]]/page.tsx` — registration form (calls backend `/register` then auto-signs in)
+- `frontend/src/components/Header.tsx` — user info + sign out button
 
 **Modify:**
-- `frontend/src/app/layout.tsx` — wrap in `<ClerkProvider>`, remove old header
-- `frontend/src/app/page.tsx` — redirect: signed in → `/dashboard`, not → `/sign-in`
-- `frontend/src/lib/api-client.ts` — add `Authorization: Bearer <token>` header via Clerk session
+- `frontend/src/app/layout.tsx` — wrap in `<SessionProvider>`, remove static header
+- `frontend/src/app/page.tsx` — add `<Header />`
+- `frontend/src/lib/api-client.ts` — attach `Authorization: Bearer <token>` from NextAuth session
 
-**Verify:** `/` redirects to sign-in. After signup, land on `/dashboard` with sidebar. Parser works. Sign out redirects back.
+**Verify:** `/` redirects to `/sign-in` when unauthenticated. Register → auto sign-in → upload → verify full flow.
 
 ---
 
@@ -569,20 +624,20 @@ Cross-cutting: Privacy & Compliance (see full section below) — woven through a
 
 ### Chunk 8: Client Portal
 
-**Goal:** Clients log in with own Clerk account, see simplified UI, upload their own statements.
+**Goal:** Clients log in with own account, see simplified UI, upload their own statements.
 
-**Flow:** Accountant creates client → invites via email → client signs up in Clerk with `client` role → webhook links `clerk_user_id` to Client row → frontend routes client to `/portal`
+**Flow:** Accountant creates client → invites via email → client signs up with `client` role → frontend routes client to `/portal`
 
 **Create (backend):**
 - `backend/app/routers/invitations.py` — `POST /api/v1/clients/{id}/invite`
 - `backend/app/auth/permissions.py` — `require_role(*roles)` dependency
-- `backend/app/auth/client_auth.py` — `get_current_client(claims, session)` resolves Client from clerk_user_id
+- `backend/app/auth/client_auth.py` — `get_current_client(user, session)` resolves Client from user email
 - `backend/app/routers/portal.py` — portal-specific endpoints (`/api/v1/portal/me`, uploads, transactions)
 
 **Create (frontend):**
 - `frontend/src/app/(portal)/layout.tsx` — simplified sidebar (My Uploads, My Transactions)
 - `frontend/src/app/(portal)/portal/page.tsx` — client dashboard + uploader
-- `frontend/src/hooks/useUserRole.ts` — `{ role, isClient, isAccountant }` from Clerk org
+- `frontend/src/hooks/useUserRole.ts` — `{ role, isClient, isAccountant }` from session
 
 **Verify:** Invite client → client signs up → lands on `/portal` → uploads statement → accountant sees it in client detail.
 
@@ -657,9 +712,9 @@ Cross-cutting: Privacy & Compliance (see full section below) — woven through a
 - `backend/railway.toml` — `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - `backend/Procfile` — fallback for Railway
 
-**Env vars for Vercel:** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_API_URL`, sign-in/up URLs
+**Env vars for Vercel:** `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_API_URL`
 
-**Env vars for Railway:** `DATABASE_URL` (auto), `ANTHROPIC_API_KEY`, `CLERK_*`, `STRIPE_*`, `ALLOWED_ORIGINS`, `MOCK_MODE=false`
+**Env vars for Railway:** `DATABASE_URL` (auto), `ANTHROPIC_API_KEY`, `JWT_SECRET`, `STRIPE_*`, `ALLOWED_ORIGINS`, `MOCK_MODE=false`
 
 **Verify:** Push → auto-deploy. Full flow works: signup → create client → upload → export → billing.
 
@@ -669,8 +724,8 @@ Cross-cutting: Privacy & Compliance (see full section below) — woven through a
 
 - [x] **Chunk 1** — Docker Compose for Local Dev
 - [x] **Chunk 2** — Database Schema + SQLModel + Alembic
-- [ ] **Chunk 3** — Clerk Auth — Backend
-- [ ] **Chunk 4** — Clerk Auth — Frontend
+- [x] **Chunk 3** — NextAuth Backend Auth
+- [x] **Chunk 4** — NextAuth Frontend Auth
 - [ ] **Chunk 5** — Database-Backed Uploads
 - [ ] **Chunk 6** — Client Management
 - [ ] **Chunk 7** — Server-Side Category Templates
@@ -1003,18 +1058,28 @@ Design incident response around the **strictest applicable timelines**:
 
 ## Verification
 
-1. Start backend: `cd backend && source venv/bin/activate && uvicorn app.main:app --reload --port 8000`
-2. Start frontend: `cd frontend && pnpm dev`
-3. Open http://localhost:4000
-4. See the Category Manager with 16 default categories above the uploader
-5. Remove a category → it disappears, localStorage updates
-6. Add a custom category (e.g. "Client Payments" with description "Payments received from clients")
-7. Refresh the page → custom categories persist
-8. Drag-drop a PDF → transactions use the custom category list
-9. Click "Reset to Defaults" → all 16 defaults restored
-10. Click column headers to sort
-11. Upload a credit card statement → see "Posting Date" column appear
-12. Click "Export CSV" → file downloads with all columns including Posting Date
-13. Click "Export Excel" → styled Excel file downloads
-14. Upload multiple PDFs at once → all processed concurrently
-15. Verify health check: `curl http://localhost:8000/` → `{"status": "ok"}`
+### Auth Flow
+1. Start DB: `docker compose up postgres -d`
+2. Run migration: `cd backend && source venv/bin/activate && python -m alembic upgrade head`
+3. Start backend: `uvicorn app.main:app --reload --port 8000`
+4. Test register: `curl -X POST localhost:8000/api/v1/auth/register -H 'Content-Type: application/json' -d '{"email":"test@test.com","password":"test1234","full_name":"Test"}'`
+5. Test protected: `curl localhost:8000/api/v1/upload` → should return 401 (Unauthorized)
+6. Start frontend: `cd frontend && pnpm dev`
+7. Open http://localhost:4000 → should redirect to `/sign-in`
+8. Register a new account → auto sign-in → redirected to `/`
+9. Upload a PDF → verify it works with auth
+10. Sign out → redirected to `/sign-in`
+
+### Full App Flow
+1. See the Category Manager with 16 default categories above the uploader
+2. Remove a category → it disappears, localStorage updates
+3. Add a custom category (e.g. "Client Payments" with description "Payments received from clients")
+4. Refresh the page → custom categories persist
+5. Drag-drop a PDF → transactions use the custom category list
+6. Click "Reset to Defaults" → all 16 defaults restored
+7. Click column headers to sort
+8. Upload a credit card statement → see "Posting Date" column appear
+9. Click "Export CSV" → file downloads with all columns including Posting Date
+10. Click "Export Excel" → styled Excel file downloads
+11. Upload multiple PDFs at once → all processed concurrently
+12. Verify health check: `curl http://localhost:8000/` → `{"status": "ok"}`

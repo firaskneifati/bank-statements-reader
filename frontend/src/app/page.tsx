@@ -8,6 +8,7 @@ import { ExportButtons } from "@/components/ExportButtons";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { uploadStatements } from "@/lib/api-client";
 import { UploadResponse, CategoryConfig, DEFAULT_CATEGORIES } from "@/lib/types";
+import { Header } from "@/components/Header";
 import { AlertCircle, RotateCcw } from "lucide-react";
 
 const STORAGE_KEY = "bank-statement-categories";
@@ -65,6 +66,8 @@ export default function Home() {
   const totalCredits = data?.statements.reduce((sum, s) => sum + s.total_credits, 0) ?? 0;
 
   return (
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <Header />
     <div className="space-y-6">
       {state === "idle" && (
         <>
@@ -135,5 +138,6 @@ export default function Home() {
         </>
       )}
     </div>
+    </main>
   );
 }

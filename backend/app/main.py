@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import upload, export
+from app.routers import upload, export, auth
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(upload.router, prefix="/api/v1")
 app.include_router(export.router, prefix="/api/v1")
 

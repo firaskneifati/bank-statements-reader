@@ -3,12 +3,13 @@ from fastapi.responses import StreamingResponse
 
 from app.models.transaction import ExportRequest
 from app.services.export_service import generate_csv, generate_excel
+from app.auth.dependencies import CurrentUser
 
 router = APIRouter()
 
 
 @router.post("/export")
-async def export_transactions(request: ExportRequest):
+async def export_transactions(request: ExportRequest, current_user: CurrentUser):
     if not request.transactions:
         raise HTTPException(status_code=400, detail="No transactions to export")
 

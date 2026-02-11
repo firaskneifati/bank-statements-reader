@@ -19,7 +19,6 @@ class Organization(SQLModel, table=True):
 
     id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
     name: str
-    clerk_org_id: str | None = Field(default=None, unique=True)
     stripe_customer_id: str | None = None
     stripe_subscription_id: str | None = None
     plan: str = Field(default="free")
@@ -38,8 +37,9 @@ class User(SQLModel, table=True):
     __tablename__ = "users"
 
     id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
-    clerk_user_id: str = Field(unique=True)
-    email: str
+    email: str = Field(unique=True, index=True)
+    password_hash: str | None = None
+    auth_provider: str = Field(default="credentials")
     full_name: str = ""
     role: str = Field(default="member")
     org_id: uuid.UUID = Field(foreign_key="organizations.id", index=True)
@@ -57,7 +57,6 @@ class Client(SQLModel, table=True):
     org_id: uuid.UUID = Field(foreign_key="organizations.id", index=True)
     name: str
     email: str | None = None
-    clerk_user_id: str | None = None
     phone: str | None = None
     notes: str | None = None
     created_at: datetime = Field(default_factory=_now)

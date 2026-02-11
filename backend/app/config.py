@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     database_url: str = ""
     upload_dir: str = "uploads"
     max_file_size_mb: int = 10
+    jwt_secret: str = ""
+    jwt_algorithm: str = "HS256"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

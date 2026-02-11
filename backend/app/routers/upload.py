@@ -9,6 +9,7 @@ from app.models.transaction import StatementResult, UploadResponse
 from app.services.pdf_service import extract_text_from_pdf
 from app.services.llm_service import parse_transactions
 from app.services.categorization_service import categorize_transactions
+from app.auth.dependencies import CurrentUser
 
 router = APIRouter()
 
@@ -66,6 +67,7 @@ async def _process_single_file(
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_statements(
+    current_user: CurrentUser,
     files: list[UploadFile] = File(...),
     categories: str = Form(None),
 ):
