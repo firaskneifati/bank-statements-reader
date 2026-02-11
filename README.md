@@ -214,36 +214,76 @@ chore:    maintenance, dependencies, config
 
 ### Option A: Docker Compose (Recommended)
 
+Starts PostgreSQL, the backend (port 8000), and the frontend (port 4000) in one command.
+
 ```bash
+# 1. Copy env files
 cp backend/.env.example backend/.env
+
+# 2. Start all services
 docker compose up --build
-```
 
-This starts PostgreSQL, the backend (port 8000), and the frontend (port 4000). Run migrations:
-
-```bash
+# 3. Run database migrations (in a separate terminal)
 docker compose exec backend alembic upgrade head
 ```
 
-Open http://localhost:4000.
+Open http://localhost:4000, register an account, and start uploading.
 
-### Option B: Manual Setup
+**Tear down everything** (containers + database volume):
 
-**Prerequisites:** Python 3.11+, Node.js 18+, pnpm, PostgreSQL 16
+```bash
+docker compose down -v
+```
 
-#### 1. Backend Setup
+**Restart from scratch** (fresh database):
+
+```bash
+docker compose down -v
+docker compose up --build
+docker compose exec backend alembic upgrade head
+```
+
+### Option B: Manual Setup (Local Dev)
+
+**Prerequisites:** Python 3.11+, Node.js 18+, pnpm, Docker (for PostgreSQL)
+
+#### 1. Start PostgreSQL via Docker
+
+```bash
+docker compose up postgres -d
+```
+
+This starts a PostgreSQL 16 container on port 5432 with the `bankstatements` database.
+
+#### 2. Backend Setup
 
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate
+
+# Create virtual environment
+python3 -m venv venv
+
+# Activate it
+source venv/bin/activate        # macOS / Linux
+# venv\Scripts\activate          # Windows
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Set up environment
 cp .env.example .env
-# Edit .env to set DATABASE_URL if using a local PostgreSQL instance
+# Edit .env if needed (defaults work with docker compose postgres)
+
+# Run database migrations
+alembic upgrade head
+
+# Start the backend (with hot-reload)
 uvicorn app.main:app --reload --port 8000
 ```
 
-#### 2. Frontend Setup (separate terminal)
+> **Note:** The `venv/` directory is git-ignored. You must recreate it after a fresh clone.
+
+#### 3. Frontend Setup (separate terminal)
 
 ```bash
 cd frontend
@@ -251,9 +291,23 @@ pnpm install
 pnpm dev --port 4000
 ```
 
-#### 3. Open the App
+#### 4. Open the App
 
-Open http://localhost:4000, drag-drop any PDF, view the sortable transaction table, and export to CSV or Excel.
+Open http://localhost:4000, register an account, drag-drop any PDF, view the sortable transaction table, and export to CSV or Excel.
+
+### Resetting the Database
+
+To wipe all data and start fresh:
+
+```bash
+# If using Docker Compose for everything:
+docker compose down -v && docker compose up --build
+docker compose exec backend alembic upgrade head
+
+# If using manual setup with just postgres container:
+docker compose down -v && docker compose up postgres -d
+cd backend && source venv/bin/activate && alembic upgrade head
+```
 
 ## Environment Variables
 
@@ -723,7 +777,7 @@ Cross-cutting: Privacy & Compliance (see full section below) — woven through a
 - [x] **Chunk 2** — Database Schema + SQLModel + Alembic
 - [x] **Chunk 3** — NextAuth Backend Auth
 - [x] **Chunk 4** — NextAuth Frontend Auth
-- [ ] **Chunk 5** — Database-Backed Uploads
+- [ ] **Chunk 5** — Stateless Privacy-by-Design Conversion (replaces original "DB-Backed Uploads")
 - [ ] **Chunk 6** — Client Management
 - [ ] **Chunk 7** — Server-Side Category Templates
 - [ ] **Chunk 8** — Client Portal
@@ -731,6 +785,96 @@ Cross-cutting: Privacy & Compliance (see full section below) — woven through a
 - [ ] **Chunk 10** — Stripe Billing (Sandbox)
 - [ ] **Chunk 11** — Settings Page
 - [ ] **Chunk 12** — Production Deployment
+
+---
+
+## Next Steps — How to Resume Development
+
+### Before You Start
+
+```bash
+# 1. Make sure Docker Desktop is running
+
+# 2. Clean up old containers and data
+docker compose down -v
+
+# 3. Start fresh PostgreSQL
+docker compose up postgres -d
+
+# 4. Recreate the backend virtual environment
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 5. Run database migrations
+alembic upgrade head
+
+# 6. Start backend
+uvicorn app.main:app --reload --port 8000
+
+# 7. In a separate terminal, start frontend
+cd frontend
+pnpm install   # only needed on first setup
+pnpm dev --port 4000
+```
+
+### Chunk 5: Stateless Privacy-by-Design Conversion
+
+**Goal:** Process PDFs in memory only (never write to disk), don't persist financial data, show results inline on the home page with client-side export. Once the user navigates away, data is gone.
+
+**Why the change:** The original Chunk 5 planned database-backed uploads with persistent transaction storage. For handling sensitive bank statement data, a stateless approach is better — no financial data at rest means less compliance burden and less risk.
+
+**What gets preserved:** Per-user category customization, API usage tracking (org.total_documents_processed / total_pages_processed), audit logging (metadata only, no financial content).
+
+#### Implementation Steps
+
+**Phase 1 — Database changes:**
+- Add `default_categories` JSON column to `users` table (per-user category storage)
+- Add `audit_logs` table (id, org_id, user_id, action, file_count, total_pages, ip_address, user_agent, created_at)
+- Add `total_documents_processed` and `total_pages_processed` to `organizations` table
+- Drop `transaction_records`, `uploads`, `upload_batches` tables
+- Update `models.py`: remove UploadBatch/Upload/TransactionRecord, add AuditLog, add User.default_categories
+- Update `migrations/env.py` imports
+
+**Phase 2 — Backend config:**
+- Add to `config.py`: `enable_hsts`, `upload_rate_limit`, `database_ssl`; remove `upload_dir`
+- Add SSL support in `engine.py`
+- Install `slowapi` for rate limiting
+
+**Phase 3 — Backend schemas:**
+- Remove from `transaction.py`: StatementResultWithId, UploadResponseWithIds, UploadSummary, TransactionDetail, UploadDetail, BatchSummary, BatchDetail, TransactionUpdateRequest, PaginatedResponse
+- Keep: Transaction, StatementResult, UploadResponse, ExportRequest, CategoryConfigSchema
+
+**Phase 4 — Backend endpoints:**
+- `upload.py`: Process PDFs in memory (BytesIO), write AuditLog entry, increment org usage counters, return UploadResponse (no file storage)
+- `uploads.py`: Strip to category-only endpoints (GET/PUT /categories/defaults) reading from user.default_categories instead of org
+- `transactions.py`: Remove all endpoints (gut the file)
+- `pdf_service.py`: Accept `str | BytesIO` (pdfplumber supports both)
+- `main.py`: Add SecurityHeadersMiddleware, slowapi rate limiter, remove transactions router, remove `os.makedirs(upload_dir)`
+- Add `GET /usage` endpoint returning org usage stats
+
+**Phase 5 — Frontend types + API client:**
+- Remove batch/upload/transaction types from `types.ts`
+- Remove batch/upload functions from `api-client.ts`, add `fetchUsage()`
+- Keep: uploadStatements, exportTransactions, fetchDefaultCategories, updateDefaultCategories
+
+**Phase 6 — Frontend pages:**
+- `page.tsx`: Show results inline (TransactionTable + ExportButtons), yellow warning banner ("Results are temporary"), beforeunload listener, usage stats display, "New Upload" button
+- Delete `uploads/page.tsx` and `uploads/[id]/page.tsx`
+- `Header.tsx`: Remove "Upload History" nav link (single-page app now)
+
+**Verification checklist:**
+1. Upload PDF → results shown inline with transactions + export buttons
+2. Export CSV/XLSX → file downloads correctly
+3. Navigate away → results gone, no data in DB
+4. beforeunload warning fires when results are present
+5. Categories persist across sessions (stored on user record)
+6. Usage counters increment correctly
+7. Audit log created per upload (metadata only)
+8. Security headers in responses
+9. Rate limiting works (429 on excessive requests)
+10. No PDF files on disk after upload
 
 ## Privacy, Legal & Compliance
 
@@ -1059,15 +1203,16 @@ Design incident response around the **strictest applicable timelines**:
 
 ### Auth Flow
 1. Start DB: `docker compose up postgres -d`
-2. Run migration: `cd backend && source venv/bin/activate && python -m alembic upgrade head`
-3. Start backend: `uvicorn app.main:app --reload --port 8000`
-4. Test register: `curl -X POST localhost:8000/api/v1/auth/register -H 'Content-Type: application/json' -d '{"email":"test@test.com","password":"test1234","full_name":"Test"}'`
-5. Test protected: `curl localhost:8000/api/v1/upload` → should return 401 (Unauthorized)
-6. Start frontend: `cd frontend && pnpm dev`
-7. Open http://localhost:4000 → should redirect to `/sign-in`
-8. Register a new account → auto sign-in → redirected to `/`
-9. Upload a PDF → verify it works with auth
-10. Sign out → redirected to `/sign-in`
+2. Set up backend (if not done): `cd backend && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt`
+3. Run migration: `alembic upgrade head`
+4. Start backend: `uvicorn app.main:app --reload --port 8000`
+5. Test register: `curl -X POST localhost:8000/api/v1/auth/register -H 'Content-Type: application/json' -d '{"email":"test@test.com","password":"test1234","full_name":"Test"}'`
+6. Test protected: `curl localhost:8000/api/v1/upload` → should return 401 (Unauthorized)
+7. Start frontend: `cd frontend && pnpm dev`
+8. Open http://localhost:4000 → should redirect to `/sign-in`
+9. Register a new account → auto sign-in → redirected to `/`
+10. Upload a PDF → verify it works with auth
+11. Sign out → redirected to `/sign-in`
 
 ### Full App Flow
 1. See the Category Manager with 16 default categories above the uploader

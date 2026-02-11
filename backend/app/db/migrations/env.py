@@ -19,7 +19,7 @@ from app.db.models import (  # noqa: F401
     User,
     Client,
     Upload,
-    TransactionRecord,
+    ExportLog,
     CategoryTemplate,
 )
 

@@ -17,11 +17,28 @@ class StatementResult(BaseModel):
     total_debits: float
     total_credits: float
     transaction_count: int
+    page_count: int = 0
+
+
+class UsageStats(BaseModel):
+    total_uploads: int
+    total_documents: int
+    total_pages: int
+    total_transactions: int
+    total_exports: int
+    total_bytes_processed: int
+    month_uploads: int
+    month_documents: int
+    month_pages: int
+    month_transactions: int
+    month_exports: int
+    month_bytes_processed: int
 
 
 class UploadResponse(BaseModel):
     statements: list[StatementResult]
     mock_mode: bool
+    usage: UsageStats | None = None
 
 
 class ExportRequest(BaseModel):

@@ -38,11 +38,28 @@ export interface StatementResult {
   total_debits: number;
   total_credits: number;
   transaction_count: number;
+  page_count: number;
+}
+
+export interface UsageStats {
+  total_uploads: number;
+  total_documents: number;
+  total_pages: number;
+  total_transactions: number;
+  total_exports: number;
+  total_bytes_processed: number;
+  month_uploads: number;
+  month_documents: number;
+  month_pages: number;
+  month_transactions: number;
+  month_exports: number;
+  month_bytes_processed: number;
 }
 
 export interface UploadResponse {
   statements: StatementResult[];
   mock_mode: boolean;
+  usage: UsageStats | null;
 }
 
 export interface ExportRequest {

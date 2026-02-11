@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import datetime
 
 from sqlmodel import Field, SQLModel, Relationship
 
@@ -25,10 +25,27 @@ class Organization(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
+    # Lifetime totals
+    total_uploads: int = Field(default=0)
+    total_documents: int = Field(default=0)
+    total_pages: int = Field(default=0)
+    total_transactions: int = Field(default=0)
+    total_exports: int = Field(default=0)
+    total_bytes_processed: int = Field(default=0)
+
+    # Current billing period (reset monthly)
+    month_uploads: int = Field(default=0)
+    month_documents: int = Field(default=0)
+    month_pages: int = Field(default=0)
+    month_transactions: int = Field(default=0)
+    month_exports: int = Field(default=0)
+    month_bytes_processed: int = Field(default=0)
+    usage_reset_at: datetime = Field(default_factory=_now)
+
     users: list["User"] = Relationship(back_populates="organization")
     clients: list["Client"] = Relationship(back_populates="organization")
     uploads: list["Upload"] = Relationship(back_populates="organization")
-    transactions: list["TransactionRecord"] = Relationship(back_populates="organization")
+    export_logs: list["ExportLog"] = Relationship(back_populates="organization")
     category_templates: list["CategoryTemplate"] = Relationship(back_populates="organization")
 
 
@@ -47,6 +64,8 @@ class User(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=_now)
 
     organization: Organization = Relationship(back_populates="users")
+    uploads: list["Upload"] = Relationship(back_populates="uploaded_by")
+    export_logs: list["ExportLog"] = Relationship(back_populates="user")
 
 
 # ── Client ───────────────────────────────────────────────────────────
@@ -63,50 +82,39 @@ class Client(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=_now)
 
     organization: Organization = Relationship(back_populates="clients")
-    uploads: list["Upload"] = Relationship(back_populates="client")
-    transactions: list["TransactionRecord"] = Relationship(back_populates="client")
 
 
-# ── Upload ───────────────────────────────────────────────────────────
+# ── Upload (usage metadata log) ─────────────────────────────────────
 class Upload(SQLModel, table=True):
     __tablename__ = "uploads"
 
     id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
     org_id: uuid.UUID = Field(foreign_key="organizations.id", index=True)
-    client_id: uuid.UUID | None = Field(default=None, foreign_key="clients.id")
-    uploaded_by_user_id: uuid.UUID | None = Field(default=None, foreign_key="users.id")
-    filename: str
+    uploaded_by_user_id: uuid.UUID = Field(foreign_key="users.id", index=True)
     status: str = Field(default="processing")
+    document_count: int = Field(default=0)
+    page_count: int = Field(default=0)
     transaction_count: int = Field(default=0)
-    total_debits: float = Field(default=0)
-    total_credits: float = Field(default=0)
+    bytes_processed: int = Field(default=0)
     created_at: datetime = Field(default_factory=_now)
 
     organization: Organization = Relationship(back_populates="uploads")
-    client: Client | None = Relationship(back_populates="uploads")
-    transactions: list["TransactionRecord"] = Relationship(back_populates="upload")
+    uploaded_by: User = Relationship(back_populates="uploads")
 
 
-# ── TransactionRecord ────────────────────────────────────────────────
-class TransactionRecord(SQLModel, table=True):
-    __tablename__ = "transaction_records"
+# ── ExportLog ────────────────────────────────────────────────────────
+class ExportLog(SQLModel, table=True):
+    __tablename__ = "export_logs"
 
     id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
     org_id: uuid.UUID = Field(foreign_key="organizations.id", index=True)
-    upload_id: uuid.UUID = Field(foreign_key="uploads.id", index=True)
-    client_id: uuid.UUID | None = Field(default=None, foreign_key="clients.id")
-    date: date
-    posting_date: date | None = None
-    description: str
-    amount: float
-    type: str
-    balance: float | None = None
-    category: str = Field(default="Other")
+    user_id: uuid.UUID = Field(foreign_key="users.id", index=True)
+    format: str
+    transaction_count: int = Field(default=0)
     created_at: datetime = Field(default_factory=_now)
 
-    organization: Organization = Relationship(back_populates="transactions")
-    upload: Upload = Relationship(back_populates="transactions")
-    client: Client | None = Relationship(back_populates="transactions")
+    organization: Organization = Relationship(back_populates="export_logs")
+    user: User = Relationship(back_populates="export_logs")
 
 
 # ── CategoryTemplate ─────────────────────────────────────────────────

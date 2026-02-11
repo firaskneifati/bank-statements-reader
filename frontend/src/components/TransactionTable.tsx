@@ -95,7 +95,7 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
         ),
       }),
     ],
-    []
+    [hasPostingDates]
   );
 
   const table = useReactTable({

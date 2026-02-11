@@ -1,5 +1,5 @@
 import { getSession } from "next-auth/react";
-import { UploadResponse, ExportRequest, CategoryConfig } from "./types";
+import { UploadResponse, ExportRequest, CategoryConfig, UsageStats } from "./types";
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const session = await getSession();
@@ -35,6 +35,21 @@ export async function uploadStatements(
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: "Upload failed" }));
     throw new Error(error.detail || `Upload failed (${response.status})`);
+  }
+
+  return response.json();
+}
+
+export async function fetchUsage(): Promise<UsageStats> {
+  const authHeaders = await getAuthHeaders();
+
+  const response = await fetch("/api/v1/usage", {
+    headers: { ...authHeaders },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: "Failed to fetch usage" }));
+    throw new Error(error.detail || `Failed to fetch usage (${response.status})`);
   }
 
   return response.json();
