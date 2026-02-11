@@ -13,7 +13,7 @@ from app.db.models import Organization, User, Upload, ExportLog
 from app.auth.password import hash_password
 
 
-async def create_user(email: str, password: str, full_name: str, org_name: str | None):
+async def create_user(email: str, password: str, full_name: str, org_name: str | None, page_limit: int | None):
     if not async_session_factory:
         print("Error: DATABASE_URL not configured")
         sys.exit(1)
@@ -24,7 +24,7 @@ async def create_user(email: str, password: str, full_name: str, org_name: str |
             print(f"Error: {email} already exists")
             sys.exit(1)
 
-        org = Organization(name=org_name or f"{full_name}'s Organization")
+        org = Organization(name=org_name or f"{full_name}'s Organization", page_limit=page_limit)
         session.add(org)
         await session.flush()
 
@@ -38,7 +38,28 @@ async def create_user(email: str, password: str, full_name: str, org_name: str |
         )
         session.add(user)
         await session.commit()
-        print(f"Created user: {email} ({full_name})")
+        limit_str = f", page limit: {page_limit}" if page_limit else ""
+        print(f"Created user: {email} ({full_name}{limit_str})")
+
+
+async def set_limit(email: str, page_limit: int | None):
+    if not async_session_factory:
+        print("Error: DATABASE_URL not configured")
+        sys.exit(1)
+
+    async with async_session_factory() as session:
+        result = await session.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if not user:
+            print(f"Error: {email} not found")
+            sys.exit(1)
+
+        org = await session.get(Organization, user.org_id)
+        org.page_limit = page_limit
+        session.add(org)
+        await session.commit()
+        limit_str = str(page_limit) if page_limit else "unlimited"
+        print(f"Set page limit for {email}: {limit_str}")
 
 
 async def show_usage():
@@ -73,9 +94,15 @@ async def show_usage():
             )
             exports = exports_result.scalar() or 0
 
+            # Get org page limit
+            user_result = await session.execute(select(User).where(User.id == uid))
+            user_obj = user_result.scalar_one()
+            org = await session.get(Organization, user_obj.org_id)
+            limit_str = f"  |  Limit: {org.page_limit} pages" if org and org.page_limit else ""
+
             print(f"\n  {name} <{email}>")
             print(f"    Joined: {created.strftime('%Y-%m-%d')}")
-            print(f"    Uploads: {uploads}  |  Documents: {docs}  |  Pages: {pages}  |  Transactions: {txns}  |  Exports: {exports}")
+            print(f"    Uploads: {uploads}  |  Documents: {docs}  |  Pages: {pages}  |  Transactions: {txns}  |  Exports: {exports}{limit_str}")
 
         # Totals
         totals = await session.execute(
@@ -109,6 +136,12 @@ def main():
     cu.add_argument("--password", required=True)
     cu.add_argument("--name", required=True, help="Full name")
     cu.add_argument("--org", default=None, help="Organization name (optional)")
+    cu.add_argument("--page-limit", type=int, default=None, help="Max pages allowed (omit for unlimited)")
+
+    # set-limit
+    sl = sub.add_parser("set-limit", help="Set page limit for a user")
+    sl.add_argument("--email", required=True)
+    sl.add_argument("--pages", type=int, required=True, help="Page limit (0 for unlimited)")
 
     # usage
     sub.add_parser("usage", help="Show usage statistics for all users")
@@ -116,7 +149,9 @@ def main():
     args = parser.parse_args()
 
     if args.command == "create-user":
-        asyncio.run(create_user(args.email, args.password, args.name, args.org))
+        asyncio.run(create_user(args.email, args.password, args.name, args.org, args.page_limit))
+    elif args.command == "set-limit":
+        asyncio.run(set_limit(args.email, args.pages or None))
     elif args.command == "usage":
         asyncio.run(show_usage())
     else:

@@ -33,6 +33,9 @@ class Organization(SQLModel, table=True):
     total_exports: int = Field(default=0)
     total_bytes_processed: int = Field(default=0)
 
+    # Limits (None = unlimited)
+    page_limit: int | None = Field(default=None)
+
     # Current billing period (reset monthly)
     month_uploads: int = Field(default=0)
     month_documents: int = Field(default=0)

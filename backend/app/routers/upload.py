@@ -98,6 +98,7 @@ def _usage_from_org(org: Organization) -> UsageStats:
         month_transactions=org.month_transactions,
         month_exports=org.month_exports,
         month_bytes_processed=org.month_bytes_processed,
+        page_limit=org.page_limit,
     )
 
 
@@ -112,6 +113,14 @@ async def upload_statements(
 ):
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
+
+    # Enforce page limit
+    org = await session.get(Organization, current_user.org_id)
+    if org and org.page_limit is not None and org.total_pages >= org.page_limit:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Page limit reached ({org.page_limit} pages). Contact support to increase your limit.",
+        )
 
     custom_categories: list[dict] | None = None
     if categories:

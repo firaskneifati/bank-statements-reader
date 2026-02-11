@@ -35,7 +35,7 @@ export function UsageBanner({ usage, loading }: UsageBannerProps) {
           </p>
           <p>
             <span className="font-medium text-gray-700">All time:</span>{" "}
-            {formatNumber(usage.total_uploads)} uploads | {formatNumber(usage.total_documents)} documents | {formatNumber(usage.total_pages)} pages | {formatNumber(usage.total_transactions)} transactions | {formatNumber(usage.total_exports)} exports
+            {formatNumber(usage.total_uploads)} uploads | {formatNumber(usage.total_documents)} documents | {formatNumber(usage.total_pages)}{usage.page_limit ? `/${formatNumber(usage.page_limit)}` : ""} pages | {formatNumber(usage.total_transactions)} transactions | {formatNumber(usage.total_exports)} exports
           </p>
         </div>
       </div>

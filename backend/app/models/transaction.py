@@ -33,6 +33,7 @@ class UsageStats(BaseModel):
     month_transactions: int
     month_exports: int
     month_bytes_processed: int
+    page_limit: int | None = None
 
 
 class UploadResponse(BaseModel):

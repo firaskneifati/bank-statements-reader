@@ -56,6 +56,7 @@ export interface UsageStats {
   month_transactions: number;
   month_exports: number;
   month_bytes_processed: number;
+  page_limit: number | null;
 }
 
 export interface UploadResponse {
