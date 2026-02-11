@@ -120,10 +120,10 @@ async def upload_statements(
         except json.JSONDecodeError:
             raise HTTPException(status_code=400, detail="Invalid categories JSON")
 
-    # Process all files concurrently for speed
-    results = await asyncio.gather(
-        *[_process_single_file(f, custom_categories=custom_categories) for f in files]
-    )
+    # Process files sequentially to avoid Claude API rate limits
+    results = []
+    for f in files:
+        results.append(await _process_single_file(f, custom_categories=custom_categories))
 
     statements = [r[0] for r in results]
     total_bytes = sum(r[1] for r in results)
