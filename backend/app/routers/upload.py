@@ -119,7 +119,7 @@ async def upload_statements(
     if org and org.page_limit is not None and org.total_pages >= org.page_limit:
         raise HTTPException(
             status_code=403,
-            detail=f"Page limit reached ({org.page_limit} pages). Contact support to increase your limit.",
+            detail=f"You've used all {org.total_pages} of your {org.page_limit} page limit. Please contact support to increase your limit.",
         )
 
     custom_categories: list[dict] | None = None

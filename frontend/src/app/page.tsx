@@ -11,7 +11,7 @@ import { UploadProgress, UploadProgressData } from "@/components/UploadProgress"
 import { uploadSingleStatement, fetchUsage } from "@/lib/api-client";
 import { UploadResponse, UsageStats, CategoryConfig, DEFAULT_CATEGORIES } from "@/lib/types";
 import { Header } from "@/components/Header";
-import { AlertCircle, RotateCcw, Trash2, FileText, Plus } from "lucide-react";
+import { AlertCircle, RotateCcw, Trash2, FileText, Plus, X } from "lucide-react";
 
 const STORAGE_KEY = "bank-statement-categories";
 const SESSION_DATA_KEY = "bank-statement-results";
@@ -199,6 +199,23 @@ export default function Home() {
   };
 
   const addMoreInputRef = useRef<HTMLInputElement>(null);
+  const colorAssignments = useRef<Record<string, typeof STATEMENT_COLORS[number]>>({});
+
+  const handleRemoveStatement = (index: number) => {
+    const name = data?.statements[index]?.filename ?? "this statement";
+    if (!window.confirm(`Remove "${name}" from results?`)) return;
+    setData((prev) => {
+      if (!prev) return prev;
+      const updated = prev.statements.filter((_, i) => i !== index);
+      if (updated.length === 0) {
+        sessionStorage.removeItem(SESSION_DATA_KEY);
+        setState("idle");
+        return null;
+      }
+      return { ...prev, statements: updated };
+    });
+    setSelectedStatement(null);
+  };
 
   const handleDiscard = () => {
     if (!window.confirm("Discard all results? This cannot be undone.")) return;
@@ -212,9 +229,15 @@ export default function Home() {
   const visibleStatements = selectedStatement !== null
     ? [data?.statements[selectedStatement]].filter(Boolean)
     : data?.statements ?? [];
-  const colorMap = Object.fromEntries(
-    (data?.statements ?? []).map((s, i) => [s.filename, STATEMENT_COLORS[i % STATEMENT_COLORS.length]])
-  );
+  const statements = data?.statements ?? [];
+  let nextColorIndex = Object.keys(colorAssignments.current).length;
+  for (const s of statements) {
+    if (!(s.filename in colorAssignments.current)) {
+      colorAssignments.current[s.filename] = STATEMENT_COLORS[nextColorIndex % STATEMENT_COLORS.length];
+      nextColorIndex++;
+    }
+  }
+  const colorMap = colorAssignments.current;
   const filteredTransactions = visibleStatements.flatMap((s) =>
     s!.transactions.map((t) => ({ ...t, source: s!.filename, sourceColor: colorMap[s!.filename] }))
   );
@@ -222,10 +245,10 @@ export default function Home() {
   const totalCredits = visibleStatements.reduce((sum, s) => sum + s!.total_credits, 0);
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <>
     <Header />
-    <UsageBanner usage={usage} loading={usageLoading} />
-    <div className="space-y-6 mt-6">
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <UsageBanner usage={usage} loading={usageLoading} />
       {state === "idle" && (
         <>
           <CategoryManager categories={categories} onChange={handleCategoriesChange} />
@@ -258,12 +281,26 @@ export default function Home() {
         <>
           {addingMore && <UploadProgress progress={uploadProgress} />}
 
-          {!addingMore && uploadProgress.failedFiles.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
-              <strong>{uploadProgress.failedFiles.length} file{uploadProgress.failedFiles.length !== 1 ? "s" : ""} failed:</strong>{" "}
-              {uploadProgress.failedFiles.map((f) => f.name).join(", ")}
-            </div>
-          )}
+          {!addingMore && uploadProgress.failedFiles.length > 0 && (() => {
+            const errors = uploadProgress.failedFiles;
+            const uniqueErrors = [...new Set(errors.map((f) => f.error))];
+            const allSameError = uniqueErrors.length === 1;
+            return (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+                {allSameError ? (
+                  <>
+                    <strong>{errors.length} file{errors.length !== 1 ? "s" : ""} failed:</strong>{" "}
+                    {uniqueErrors[0]}
+                  </>
+                ) : (
+                  <>
+                    <strong>{errors.length} file{errors.length !== 1 ? "s" : ""} failed:</strong>{" "}
+                    {errors.map((f) => `${f.name} — ${f.error}`).join("; ")}
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
           {data.mock_mode && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
@@ -297,6 +334,21 @@ export default function Home() {
                   >
                     <FileText className="h-3.5 w-3.5" />
                     {s.filename} ({s.transaction_count})
+                    <span
+                      role="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveStatement(i);
+                      }}
+                      className={`ml-1 rounded-full p-0.5 transition-colors ${
+                        selectedStatement === i
+                          ? "hover:bg-white/20"
+                          : "hover:bg-black/10"
+                      }`}
+                      title={`Remove ${s.filename}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </span>
                   </button>
                 );
               })}
@@ -355,7 +407,7 @@ export default function Home() {
           <TransactionTable transactions={filteredTransactions} />
         </>
       )}
-    </div>
     </main>
+    </>
   );
 }

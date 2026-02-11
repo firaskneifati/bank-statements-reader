@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
+import { BarChart3, FileText } from "lucide-react";
 import { UsageStats } from "@/lib/types";
 
 interface UsageBannerProps {
@@ -24,19 +24,79 @@ export function UsageBanner({ usage, loading }: UsageBannerProps) {
 
   if (!usage) return null;
 
+  const hasLimit = usage.page_limit !== null && usage.page_limit !== undefined;
+  const pagesUsed = usage.total_pages;
+  const pagesLimit = usage.page_limit ?? 0;
+  const percentage = hasLimit ? Math.min((pagesUsed / pagesLimit) * 100, 100) : 0;
+  const isNearLimit = hasLimit && percentage >= 80;
+  const isAtLimit = hasLimit && pagesUsed >= pagesLimit;
+
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-600">
-      <div className="flex items-start gap-2">
-        <BarChart3 className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-        <div className="space-y-1">
-          <p>
-            <span className="font-medium text-gray-700">This month:</span>{" "}
-            {formatNumber(usage.month_uploads)} uploads | {formatNumber(usage.month_documents)} documents | {formatNumber(usage.month_pages)} pages | {formatNumber(usage.month_transactions)} transactions | {formatNumber(usage.month_exports)} exports
-          </p>
-          <p>
-            <span className="font-medium text-gray-700">All time:</span>{" "}
-            {formatNumber(usage.total_uploads)} uploads | {formatNumber(usage.total_documents)} documents | {formatNumber(usage.total_pages)}{usage.page_limit ? `/${formatNumber(usage.page_limit)}` : ""} pages | {formatNumber(usage.total_transactions)} transactions | {formatNumber(usage.total_exports)} exports
-          </p>
+    <div className="flex flex-col sm:flex-row gap-3">
+      {hasLimit && (
+        <div
+          className={`rounded-lg border px-4 py-3 sm:min-w-[200px] ${
+            isAtLimit
+              ? "bg-red-50 border-red-200"
+              : isNearLimit
+                ? "bg-amber-50 border-amber-200"
+                : "bg-blue-50 border-blue-200"
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <FileText
+              className={`h-4 w-4 ${
+                isAtLimit ? "text-red-500" : isNearLimit ? "text-amber-500" : "text-blue-500"
+              }`}
+            />
+            <span
+              className={`text-sm font-medium ${
+                isAtLimit ? "text-red-700" : isNearLimit ? "text-amber-700" : "text-blue-700"
+              }`}
+            >
+              Pages
+            </span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span
+              className={`text-2xl font-bold ${
+                isAtLimit ? "text-red-700" : isNearLimit ? "text-amber-700" : "text-blue-700"
+              }`}
+            >
+              {formatNumber(pagesUsed)}
+            </span>
+            <span
+              className={`text-sm ${
+                isAtLimit ? "text-red-500" : isNearLimit ? "text-amber-500" : "text-blue-500"
+              }`}
+            >
+              / {formatNumber(pagesLimit)}
+            </span>
+          </div>
+          <div className="mt-2 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${
+                isAtLimit ? "bg-red-500" : isNearLimit ? "bg-amber-500" : "bg-blue-500"
+              }`}
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-600">
+        <div className="flex items-start gap-2">
+          <BarChart3 className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+          <div className="space-y-1">
+            <p>
+              <span className="font-medium text-gray-700">This month:</span>{" "}
+              {formatNumber(usage.month_uploads)} uploads | {formatNumber(usage.month_documents)} docs | {formatNumber(usage.month_pages)} pages | {formatNumber(usage.month_transactions)} transactions
+            </p>
+            <p>
+              <span className="font-medium text-gray-700">All time:</span>{" "}
+              {formatNumber(usage.total_uploads)} uploads | {formatNumber(usage.total_documents)} docs | {formatNumber(usage.total_pages)} pages | {formatNumber(usage.total_transactions)} transactions | {formatNumber(usage.total_exports)} exports
+            </p>
+          </div>
         </div>
       </div>
     </div>
