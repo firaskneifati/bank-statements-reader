@@ -10,6 +10,6 @@ export const config = {
      * - _next/static, _next/image (Next.js internals)
      * - favicon.ico, sitemap.xml, robots.txt
      */
-    "/((?!sign-in|sign-up|api/auth|api/v1/|_next/static|_next/image|favicon\\.ico|sitemap\\.xml|robots\\.txt).*)",
+    "/((?!sign-in|sign-up|api/auth|api/v1/|_next/static|_next/image|favicon\\.ico|icon\\.svg|opengraph-image|manifest\\.webmanifest|sitemap\\.xml|robots\\.txt).*)",
   ],
 };

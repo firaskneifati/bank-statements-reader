@@ -13,8 +13,14 @@ export function Header() {
     <header className="bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">
-            Bank Statement Reader
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className="h-7 w-7 shrink-0" aria-hidden="true">
+              <rect x="4" y="2" width="24" height="28" rx="3" fill="#2563eb"/>
+              <rect x="7" y="5" width="18" height="22" rx="1.5" fill="#fff"/>
+              <text x="16" y="21" textAnchor="middle" fontFamily="Arial,sans-serif" fontWeight="bold" fontSize="14" fill="#2563eb">$</text>
+              <rect x="9" y="7" width="14" height="2" rx="1" fill="#93c5fd"/>
+            </svg>
+            BankRead
           </h1>
           <p className="text-sm text-gray-500">
             Upload PDF statements to extract and export transactions
