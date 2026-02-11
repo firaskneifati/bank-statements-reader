@@ -1,7 +1,11 @@
+import asyncio
 import json
+import logging
 from app.config import settings
 from app.models.transaction import Transaction
 from app.services.mock_service import generate_mock_transactions
+
+logger = logging.getLogger(__name__)
 
 PARSE_PROMPT_TEMPLATE = """You are a bank statement parser. Extract all transactions from the following bank statement text.
 
@@ -80,13 +84,23 @@ async def _parse_with_claude(
 
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
-    message = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=16384,
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-    )
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            message = await client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=16384,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+            )
+            break
+        except anthropic.RateLimitError:
+            if attempt == max_retries - 1:
+                raise
+            wait = 2 ** attempt * 15  # 15s, 30s, 60s, 120s
+            logger.warning(f"Rate limited, waiting {wait}s (attempt {attempt + 1}/{max_retries})")
+            await asyncio.sleep(wait)
 
     response_text = message.content[0].text
     # Extract JSON from response (handle markdown code blocks)
