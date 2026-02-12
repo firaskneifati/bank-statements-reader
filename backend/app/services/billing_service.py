@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 # ── Plan tier mapping ────────────────────────────────────────────────
 PLAN_PAGE_LIMITS: dict[str, int] = {
     "free": 10,
+    "basic": 100,
     "starter": 400,
     "pro": 2_000,
     "business": 10_000,
@@ -27,6 +28,7 @@ def _init_stripe() -> None:
 def price_to_plan(price_id: str) -> str:
     """Map a Stripe price ID to our plan name."""
     mapping = {
+        settings.stripe_price_basic: "basic",
         settings.stripe_price_starter: "starter",
         settings.stripe_price_pro: "pro",
         settings.stripe_price_business: "business",
@@ -37,6 +39,7 @@ def price_to_plan(price_id: str) -> str:
 def plan_to_price_id(plan: str) -> str | None:
     """Map a plan name to the Stripe price ID."""
     mapping = {
+        "basic": settings.stripe_price_basic,
         "starter": settings.stripe_price_starter,
         "pro": settings.stripe_price_pro,
         "business": settings.stripe_price_business,

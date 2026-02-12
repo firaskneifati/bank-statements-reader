@@ -67,6 +67,7 @@ export default function TermsOfServicePage() {
             </p>
             <ul className="list-disc pl-5 space-y-2">
               <li><strong>Free</strong> — 10 pages/month at no cost</li>
+              <li><strong>Basic</strong> — 100 pages/month for CA$15/mo</li>
               <li><strong>Starter</strong> — 400 pages/month for CA$49/mo</li>
               <li><strong>Pro</strong> — 2,000 pages/month for CA$199/mo</li>
               <li><strong>Business</strong> — 10,000 pages/month for CA$499/mo</li>

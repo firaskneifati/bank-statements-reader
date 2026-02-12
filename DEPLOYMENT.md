@@ -134,7 +134,106 @@ curl -k https://localhost/
 
 ---
 
-## 4. Deploy Frontend to Vercel
+## 4. Stripe Billing Setup
+
+BankRead uses Stripe for subscription billing. You need to create products and prices for each plan.
+
+### Install the Stripe CLI
+
+```bash
+# macOS (download prebuilt binary)
+curl -sL https://github.com/stripe/stripe-cli/releases/latest/download/stripe_darwin_arm64.tar.gz -o /tmp/stripe.tar.gz
+tar -xzf /tmp/stripe.tar.gz -C /usr/local/bin/
+
+# Or via Homebrew
+brew install stripe/stripe-cli/stripe
+```
+
+### Authenticate
+
+```bash
+stripe login
+# Opens browser — authorize the CLI for your Stripe account
+# Verify with: stripe config --list
+```
+
+### Create products and prices
+
+Each plan needs a **product** and a recurring **price**. Repeat for both test and live mode by passing the appropriate `--api-key`.
+
+**Example: Create the Basic plan (CA$15/mo, 100 pages)**
+
+```bash
+# 1. Create the product
+stripe products create \
+  --name "BankRead Basic" \
+  -d "metadata[pages]=100" \
+  --api-key "sk_test_..."
+
+# Note the product ID from the response (e.g. prod_Xxx...)
+
+# 2. Create the recurring price (amount in cents: CA$15 = 1500)
+stripe prices create \
+  --product "prod_Xxx..." \
+  --currency cad \
+  --unit-amount 1500 \
+  -d "recurring[interval]=month" \
+  --api-key "sk_test_..."
+
+# Note the price ID from the response (e.g. price_Xxx...)
+```
+
+Repeat for each plan, adjusting the name, metadata, and amount:
+
+| Plan | Amount (cents) | Pages |
+|------|---------------|-------|
+| Basic | 1500 | 100 |
+| Starter | 4900 | 400 |
+| Pro | 19900 | 2000 |
+| Business | 49900 | 10000 |
+
+Repeat the same commands with `--api-key "sk_live_..."` for live mode.
+
+### Configure price IDs
+
+Add the price IDs to your `.env` (local) or `.env.production` (server):
+
+```bash
+STRIPE_MODE=test  # or "live" for production
+
+STRIPE_SECRET_KEY_TEST=sk_test_...
+STRIPE_SECRET_KEY_LIVE=sk_live_...
+
+STRIPE_WEBHOOK_SECRET_TEST=whsec_...
+STRIPE_WEBHOOK_SECRET_LIVE=whsec_...
+
+STRIPE_PRICE_BASIC_TEST=price_...
+STRIPE_PRICE_STARTER_TEST=price_...
+STRIPE_PRICE_PRO_TEST=price_...
+STRIPE_PRICE_BUSINESS_TEST=price_...
+
+STRIPE_PRICE_BASIC_LIVE=price_...
+STRIPE_PRICE_STARTER_LIVE=price_...
+STRIPE_PRICE_PRO_LIVE=price_...
+STRIPE_PRICE_BUSINESS_LIVE=price_...
+```
+
+### Useful commands
+
+```bash
+# List all products
+stripe products list --api-key "sk_test_..."
+
+# List all prices
+stripe prices list --api-key "sk_test_..."
+
+# View a specific price
+stripe prices retrieve price_Xxx... --api-key "sk_test_..."
+```
+
+---
+
+## 5. Deploy Frontend to Vercel
 
 ### Connect the repo
 

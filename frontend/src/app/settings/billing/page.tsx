@@ -25,6 +25,19 @@ const PLANS = [
     features: ["10 pages/month", "CSV & Excel export", "AI categorization"],
   },
   {
+    id: "basic",
+    name: "Basic",
+    price: "CA$15",
+    period: "/mo",
+    pages: 100,
+    features: [
+      "100 pages/month",
+      "CSV & Excel export",
+      "AI categorization",
+      "Email support",
+    ],
+  },
+  {
     id: "starter",
     name: "Starter",
     price: "CA$49",
@@ -240,7 +253,7 @@ export default function BillingPage() {
         )}
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
                 <div className="h-6 bg-gray-200 rounded w-1/2 mb-4" />
@@ -293,7 +306,7 @@ export default function BillingPage() {
             )}
 
             {/* Plan cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
               {PLANS.map((plan) => {
                 const isCurrent = currentPlan === plan.id;
                 const isDowngrade =

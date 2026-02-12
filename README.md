@@ -16,7 +16,7 @@ A SaaS app that parses bank statements (PDFs, scanned documents, and photos) int
 - **Authentication** — email/password with optional TOTP-based 2FA (Google Authenticator, Authy, etc.)
 - **Terms of Service acceptance** required at sign-up with liability disclaimer
 - **Usage tracking** — per-org page limits, text vs image page breakdown, monthly reset
-- **Stripe billing** — Free, Starter, Pro, Business plans with automatic quota management
+- **Stripe billing** — Free, Basic, Starter, Pro, Business plans with automatic quota management
 - **Security** — rate limiting, security headers, JWT auth, input validation, audit logging
 
 ## Architecture

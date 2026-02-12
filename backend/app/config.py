@@ -17,9 +17,11 @@ class Settings(BaseSettings):
     stripe_secret_key_live: str = ""
     stripe_webhook_secret_test: str = ""
     stripe_webhook_secret_live: str = ""
+    stripe_price_basic_test: str = ""
     stripe_price_starter_test: str = ""
     stripe_price_pro_test: str = ""
     stripe_price_business_test: str = ""
+    stripe_price_basic_live: str = ""
     stripe_price_starter_live: str = ""
     stripe_price_pro_live: str = ""
     stripe_price_business_live: str = ""
@@ -58,6 +60,12 @@ class Settings(BaseSettings):
         if self.stripe_mode == "live":
             return self.stripe_webhook_secret_live
         return self.stripe_webhook_secret_test
+
+    @property
+    def stripe_price_basic(self) -> str:
+        if self.stripe_mode == "live":
+            return self.stripe_price_basic_live
+        return self.stripe_price_basic_test
 
     @property
     def stripe_price_starter(self) -> str:
