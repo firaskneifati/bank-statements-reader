@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, func
 
 from app.db.engine import async_session_factory
-from app.db.models import Organization, User, Upload, ExportLog
+from app.db.models import Organization, User, Upload, ExportLog, AuditLog, Client, CategoryTemplate
 from app.auth.password import hash_password
 
 
@@ -63,6 +63,38 @@ async def set_limit(email: str, page_limit: int | None):
         await session.commit()
         limit_str = str(page_limit) if page_limit else "unlimited"
         print(f"Set page limit for {email}: {limit_str}")
+
+
+async def delete_user(email: str):
+    if not async_session_factory:
+        print("Error: DATABASE_URL not configured")
+        sys.exit(1)
+
+    async with async_session_factory() as session:
+        result = await session.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if not user:
+            print(f"Error: {email} not found")
+            sys.exit(1)
+
+        uid, oid = user.id, user.org_id
+
+        # Delete child rows referencing user
+        await session.execute(AuditLog.__table__.delete().where(AuditLog.user_id == uid))
+        await session.execute(ExportLog.__table__.delete().where(ExportLog.user_id == uid))
+        await session.execute(Upload.__table__.delete().where(Upload.uploaded_by_user_id == uid))
+        await session.execute(User.__table__.delete().where(User.id == uid))
+
+        # Delete org if no other users remain
+        remaining = await session.execute(select(func.count(User.id)).where(User.org_id == oid))
+        if remaining.scalar() == 0:
+            await session.execute(AuditLog.__table__.delete().where(AuditLog.org_id == oid))
+            await session.execute(CategoryTemplate.__table__.delete().where(CategoryTemplate.org_id == oid))
+            await session.execute(Client.__table__.delete().where(Client.org_id == oid))
+            await session.execute(Organization.__table__.delete().where(Organization.id == oid))
+
+        await session.commit()
+        print(f"Deleted user: {email}")
 
 
 async def show_usage():
@@ -141,6 +173,10 @@ def main():
     cu.add_argument("--org", default=None, help="Organization name (optional)")
     cu.add_argument("--page-limit", type=int, default=None, help="Max pages allowed (omit for unlimited)")
 
+    # delete-user
+    du = sub.add_parser("delete-user", help="Delete a user and their data")
+    du.add_argument("--email", required=True)
+
     # set-limit
     sl = sub.add_parser("set-limit", help="Set page limit for a user")
     sl.add_argument("--email", required=True)
@@ -153,6 +189,8 @@ def main():
 
     if args.command == "create-user":
         asyncio.run(create_user(args.email, args.password, args.name, args.org, args.page_limit))
+    elif args.command == "delete-user":
+        asyncio.run(delete_user(args.email))
     elif args.command == "set-limit":
         asyncio.run(set_limit(args.email, args.pages or None))
     elif args.command == "usage":
