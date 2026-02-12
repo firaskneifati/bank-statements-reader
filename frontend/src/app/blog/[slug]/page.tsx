@@ -503,6 +503,29 @@ export default async function BlogPostPage({
     "@context": "https://schema.org",
     "@graph": [
       {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: "https://bankread.ai",
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Blog",
+            item: "https://bankread.ai/blog",
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: post.title,
+            item: `https://bankread.ai/blog/${post.slug}`,
+          },
+        ],
+      },
+      {
         "@type": "Article",
         headline: post.title,
         description: post.description,
@@ -521,7 +544,7 @@ export default async function BlogPostPage({
       },
       {
         "@type": "HowTo",
-        name: `How to convert ${post.bankName} PDF statements to CSV or Excel`,
+        name: `How to convert ${post.bankName} statements (PDF, scanned, or photo) to CSV or Excel`,
         description: post.description,
         step: howToSteps.map((s, i) => ({
           "@type": "HowToStep",

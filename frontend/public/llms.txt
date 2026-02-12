@@ -1,0 +1,49 @@
+# BankRead — AI Bank Statement Reader
+> Upload PDF bank statements, scanned documents, or photos and automatically extract transactions with AI categorization. Export to CSV or Excel.
+
+## About
+BankRead is a SaaS application that converts bank statements into structured transaction data. It accepts text-based PDFs, scanned/image-based PDFs, and direct image uploads (JPEG, PNG, HEIC). On mobile, users can capture paper statements with their phone camera. Transactions are automatically categorized using AI and can be exported to CSV or Excel.
+
+## Supported Inputs
+- Text-based PDF bank statements
+- Scanned PDF bank statements (auto-detected, processed via AI vision)
+- Image files: JPEG, PNG, HEIC
+- Mobile camera capture (phone photos of paper statements)
+
+## Supported Banks
+- Canada: TD Canada Trust, RBC Royal Bank, BMO, Scotiabank, CIBC
+- United States: Chase, Bank of America, Wells Fargo
+- Most international banks with standard PDF statement formats
+
+## Features
+- AI-powered transaction extraction from PDFs, scans, and photos
+- Automatic transaction categorization (16 built-in categories or custom)
+- CSV and Excel export
+- Multi-statement upload and merging
+- Two-factor authentication (TOTP)
+- Privacy by design — files processed in memory, never stored
+- Image pages count as 3x against monthly page quota
+
+## Pricing
+- Free: 10 pages/month
+- Starter: CA$49/month — 400 pages
+- Pro: CA$199/month — 2,000 pages
+- Business: CA$499/month — 10,000 pages
+
+## Links
+- Website: https://bankread.ai
+- Sign Up: https://bankread.ai/sign-up
+- Sign In: https://bankread.ai/sign-in
+- Blog: https://bankread.ai/blog
+- Privacy Policy: https://bankread.ai/privacy
+- Terms of Service: https://bankread.ai/terms
+
+## Blog Posts
+- How to Convert TD Bank Statements to CSV or Excel: https://bankread.ai/blog/convert-td-bank-statement-to-csv
+- How to Convert RBC Bank Statements to CSV or Excel: https://bankread.ai/blog/convert-rbc-bank-statement-to-csv
+- How to Convert BMO Bank Statements to CSV or Excel: https://bankread.ai/blog/convert-bmo-bank-statement-to-csv
+- How to Convert Scotiabank Statements to CSV or Excel: https://bankread.ai/blog/convert-scotiabank-statement-to-csv
+- How to Convert CIBC Bank Statements to CSV or Excel: https://bankread.ai/blog/convert-cibc-bank-statement-to-csv
+- How to Convert Chase Bank Statements to CSV or Excel: https://bankread.ai/blog/convert-chase-bank-statement-to-csv
+- How to Convert Bank of America Statements to CSV or Excel: https://bankread.ai/blog/convert-bank-of-america-statement-to-csv
+- How to Convert Wells Fargo Statements to CSV or Excel: https://bankread.ai/blog/convert-wells-fargo-statement-to-csv
