@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 # ── Plan tier mapping ────────────────────────────────────────────────
 PLAN_PAGE_LIMITS: dict[str, int] = {
-    "free": 50,
-    "starter": 500,
+    "free": 10,
+    "starter": 400,
     "pro": 2_000,
     "business": 10_000,
 }

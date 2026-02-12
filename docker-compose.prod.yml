@@ -54,6 +54,7 @@ services:
       CONTACT_EMAIL: ${CONTACT_EMAIL}
       FRONTEND_URL: ${FRONTEND_URL}
       REGISTRATION_OPEN: ${REGISTRATION_OPEN:-false}
+      AUDIT_LOG_ENABLED: ${AUDIT_LOG_ENABLED:-true}
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     depends_on:
       postgres:

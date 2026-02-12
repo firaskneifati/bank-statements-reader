@@ -53,7 +53,7 @@ async def register(request: Request, body: RegisterRequest, session: AsyncSessio
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
-    org = Organization(name=body.organization_name or f"{body.full_name}'s Organization", page_limit=50)
+    org = Organization(name=body.organization_name or f"{body.full_name}'s Organization", page_limit=10)
     session.add(org)
     await session.flush()
 

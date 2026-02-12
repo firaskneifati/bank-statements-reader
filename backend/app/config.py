@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     registration_open: bool = False
+    audit_log_enabled: bool = True
     stripe_mode: str = "test"
     stripe_secret_key_test: str = ""
     stripe_secret_key_live: str = ""

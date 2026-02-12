@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.db.models import AuditLog
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,8 @@ async def log_audit(
     org_id: UUID | None = None,
     detail: str | None = None,
 ) -> None:
+    if not settings.audit_log_enabled:
+        return
     """Write a single row to audit_logs. Commits independently so it
     never blocks the caller's main transaction on failure."""
     try:

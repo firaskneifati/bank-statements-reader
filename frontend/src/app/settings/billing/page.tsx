@@ -21,17 +21,17 @@ const PLANS = [
     name: "Free",
     price: "CA$0",
     period: "/mo",
-    pages: 50,
-    features: ["50 pages/month", "CSV & Excel export", "AI categorization"],
+    pages: 10,
+    features: ["10 pages/month", "CSV & Excel export", "AI categorization"],
   },
   {
     id: "starter",
     name: "Starter",
-    price: "CA$19",
+    price: "CA$49",
     period: "/mo",
-    pages: 500,
+    pages: 400,
     features: [
-      "500 pages/month",
+      "400 pages/month",
       "CSV & Excel export",
       "AI categorization",
       "Email support",
@@ -40,7 +40,7 @@ const PLANS = [
   {
     id: "pro",
     name: "Pro",
-    price: "CA$49",
+    price: "CA$199",
     period: "/mo",
     pages: 2000,
     features: [
@@ -54,7 +54,7 @@ const PLANS = [
   {
     id: "business",
     name: "Business",
-    price: "CA$149",
+    price: "CA$499",
     period: "/mo",
     pages: 10000,
     features: [
@@ -389,7 +389,7 @@ export default function BillingPage() {
                   You&apos;ll keep your {currentPlan} plan until the end of your billing period
                   {billing?.current_period_end && (
                     <> ({new Date(billing.current_period_end * 1000).toLocaleDateString()})</>
-                  )}. After that, you&apos;ll be moved to the Free plan (50 pages/month).
+                  )}. After that, you&apos;ll be moved to the Free plan (10 pages/month).
                 </p>
                 {showCancelConfirm ? (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
