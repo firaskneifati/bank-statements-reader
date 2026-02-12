@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { Upload, FileText, ImageIcon, Camera } from "lucide-react";
+import { Upload, FileText, ImageIcon } from "lucide-react";
 
 interface FileUploaderProps {
   onUpload: (files: File[]) => void;
@@ -21,25 +21,11 @@ function isImageFile(file: File) {
 }
 
 export function FileUploader({ onUpload, disabled }: FileUploaderProps) {
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       if (acceptedFiles.length > 0) {
         onUpload(acceptedFiles);
       }
-    },
-    [onUpload]
-  );
-
-  const handleCameraCapture = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (files && files.length > 0) {
-        onUpload(Array.from(files));
-      }
-      // Reset so the same file can be re-selected
-      e.target.value = "";
     },
     [onUpload]
   );
@@ -105,32 +91,6 @@ export function FileUploader({ onUpload, disabled }: FileUploaderProps) {
           )}
         </div>
       </div>
-
-      {/* Camera capture for mobile */}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => cameraInputRef.current?.click()}
-        className={`
-          flex items-center justify-center gap-2 rounded-xl border border-gray-300
-          bg-white px-4 py-3 text-sm font-medium text-gray-700
-          transition-all duration-200 hover:border-blue-400 hover:bg-gray-50
-          sm:hidden
-          ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
-        `}
-      >
-        <Camera className="h-5 w-5" />
-        Take Photo
-      </button>
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleCameraCapture}
-        disabled={disabled}
-      />
     </div>
   );
 }
