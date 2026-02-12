@@ -11,6 +11,9 @@ venv/
 # Environment
 .env
 
+# GCP service account keys
+gcp-*.json
+
 # Uploads
 uploads/
 

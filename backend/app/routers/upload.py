@@ -20,6 +20,7 @@ from app.services.image_service import (
     optimize_image,
     validate_image,
 )
+from app.services.docai_service import extract_text_with_docai
 from app.services.categorization_service import categorize_transactions
 from app.auth.dependencies import CurrentUser
 from app.limiter import limiter
@@ -112,20 +113,36 @@ async def _process_pdf(
             processing_type = "text"
         else:
             # --- Scanned PDF path ---
-            logger.info(f"Scanned PDF detected: '{filename}', converting {page_count} pages to images")
+            logger.info(f"Scanned PDF detected: '{filename}', {page_count} pages")
             page_count = pdf_page_count(tmp_path)
-            temp_images = pdf_pages_to_images(tmp_path)
-            for img_path in temp_images:
-                optimize_image(img_path)
 
-            transactions = await parse_transactions_from_images(
-                temp_images, filename, custom_categories=custom_categories
-            )
-            if settings.mock_mode:
-                transactions = categorize_transactions(transactions)
+            # Try Document AI first (cheap OCR)
+            docai_text = await extract_text_with_docai(contents, "application/pdf")
+            if docai_text:
+                logger.info(f"Using Document AI OCR for '{filename}'")
+                transactions = await parse_transactions(
+                    docai_text, filename, custom_categories=custom_categories
+                )
+                if settings.mock_mode:
+                    transactions = categorize_transactions(transactions)
 
-            effective_pages = math.ceil(page_count * settings.image_page_cost_multiplier)
-            processing_type = "image"
+                effective_pages = page_count
+                processing_type = "ocr"
+            else:
+                # Fall back to Vision path
+                logger.info(f"Falling back to Vision for '{filename}'")
+                temp_images = pdf_pages_to_images(tmp_path)
+                for img_path in temp_images:
+                    optimize_image(img_path)
+
+                transactions = await parse_transactions_from_images(
+                    temp_images, filename, custom_categories=custom_categories
+                )
+                if settings.mock_mode:
+                    transactions = categorize_transactions(transactions)
+
+                effective_pages = math.ceil(page_count * settings.image_page_cost_multiplier)
+                processing_type = "image"
 
         total_debits = sum(t.amount for t in transactions if t.type == "debit")
         total_credits = sum(t.amount for t in transactions if t.type == "credit")
@@ -166,23 +183,43 @@ async def _process_image(
 
     temp_files: list[str] = [tmp_path]
     try:
-        # Convert HEIC to JPEG
+        # Convert HEIC to JPEG (required for both Document AI and Vision)
         if ext == ".heic":
             jpeg_path = convert_heic_to_jpeg(tmp_path)
             temp_files.append(jpeg_path)
             img_path = jpeg_path
+            docai_mime = "image/jpeg"
         else:
             img_path = tmp_path
+            docai_mime = "image/jpeg" if ext in (".jpg", ".jpeg") else "image/png"
 
-        optimize_image(img_path)
+        # Try Document AI first
+        with open(img_path, "rb") as f:
+            img_bytes = f.read()
+        docai_text = await extract_text_with_docai(img_bytes, docai_mime)
 
-        transactions = await parse_transactions_from_images(
-            [img_path], filename, custom_categories=custom_categories
-        )
-        if settings.mock_mode:
-            transactions = categorize_transactions(transactions)
+        if docai_text:
+            logger.info(f"Using Document AI OCR for image '{filename}'")
+            transactions = await parse_transactions(
+                docai_text, filename, custom_categories=custom_categories
+            )
+            if settings.mock_mode:
+                transactions = categorize_transactions(transactions)
 
-        effective_pages = math.ceil(1 * settings.image_page_cost_multiplier)
+            effective_pages = 1
+            processing_type = "ocr"
+        else:
+            # Fall back to Vision path
+            optimize_image(img_path)
+
+            transactions = await parse_transactions_from_images(
+                [img_path], filename, custom_categories=custom_categories
+            )
+            if settings.mock_mode:
+                transactions = categorize_transactions(transactions)
+
+            effective_pages = math.ceil(1 * settings.image_page_cost_multiplier)
+            processing_type = "image"
 
         total_debits = sum(t.amount for t in transactions if t.type == "debit")
         total_credits = sum(t.amount for t in transactions if t.type == "credit")
@@ -194,7 +231,7 @@ async def _process_image(
             total_credits=round(total_credits, 2),
             transaction_count=len(transactions),
             page_count=effective_pages,
-            processing_type="image",
+            processing_type=processing_type,
         )
         return (result, bytes_processed)
     finally:

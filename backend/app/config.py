@@ -27,9 +27,17 @@ class Settings(BaseSettings):
     contact_email: str = ""
     frontend_url: str = "http://localhost:4001"
     image_page_cost_multiplier: float = 3.0
-    max_image_dimension: int = 1568
+    max_image_dimension: int = 2048
+    google_docai_project_id: str = ""
+    google_docai_location: str = "us"
+    google_docai_processor_id: str = ""
+    google_application_credentials: str = ""
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+    @property
+    def docai_enabled(self) -> bool:
+        return bool(self.google_docai_project_id and self.google_docai_processor_id)
 
     @property
     def max_file_size_bytes(self) -> int:
