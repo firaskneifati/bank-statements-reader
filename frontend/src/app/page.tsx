@@ -177,28 +177,67 @@ export default async function LandingPage() {
     "@graph": [
       {
         "@type": "WebApplication",
+        "@id": "https://bankread.ai/#app",
         name: "BankRead",
         url: "https://bankread.ai",
         description:
-          "AI-powered bank statement reader that extracts transactions from PDF statements and exports to CSV or Excel.",
+          "AI-powered bank statement reader that extracts transactions from PDF bank statements, categorizes them with AI, and exports to CSV or Excel. Supports TD, RBC, BMO, Scotiabank, CIBC, and most international banks.",
         applicationCategory: "FinanceApplication",
         operatingSystem: "Web",
+        browserRequirements: "Requires a modern web browser",
+        featureList: [
+          "PDF bank statement parsing",
+          "AI-powered transaction categorization",
+          "CSV and Excel export",
+          "Multi-statement upload and merging",
+          "Custom category keywords",
+          "Two-factor authentication (TOTP)",
+          "Privacy by design — files processed in memory, never stored",
+        ],
+        screenshot: "https://bankread.ai/opengraph-image",
+        publisher: { "@id": "https://bankread.ai/#org" },
         offers: PLANS.map((plan) => ({
           "@type": "Offer",
           name: plan.name,
           price: plan.price.replace("CA$", ""),
           priceCurrency: "CAD",
           description: plan.pages,
+          priceSpecification: {
+            "@type": "UnitPriceSpecification",
+            price: plan.price.replace("CA$", ""),
+            priceCurrency: "CAD",
+            billingDuration: "P1M",
+          },
         })),
       },
       {
         "@type": "Organization",
+        "@id": "https://bankread.ai/#org",
         name: "BankRead",
         url: "https://bankread.ai",
-        logo: "https://bankread.ai/icon.svg",
+        logo: {
+          "@type": "ImageObject",
+          url: "https://bankread.ai/icon.svg",
+          width: 512,
+          height: 512,
+        },
+        contactPoint: {
+          "@type": "ContactPoint",
+          email: "support@bankread.ai",
+          contactType: "customer support",
+          availableLanguage: "English",
+        },
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://bankread.ai/#website",
+        name: "BankRead",
+        url: "https://bankread.ai",
+        publisher: { "@id": "https://bankread.ai/#org" },
       },
       {
         "@type": "FAQPage",
+        "@id": "https://bankread.ai/#faq",
         mainEntity: FAQS.map((faq) => ({
           "@type": "Question",
           name: faq.question,
@@ -207,6 +246,7 @@ export default async function LandingPage() {
             text: faq.answer,
           },
         })),
+        isPartOf: { "@id": "https://bankread.ai/#website" },
       },
     ],
   };
