@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
 import { CookieBanner } from "@/components/CookieBanner";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -66,6 +67,7 @@ export default async function RootLayout({
         <SessionProvider session={session}>
           {children}
           <CookieBanner />
+          <GoogleAnalytics />
         </SessionProvider>
       </body>
     </html>

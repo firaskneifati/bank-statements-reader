@@ -273,6 +273,7 @@ export default async function LandingPage() {
             {registrationOpen && <a href="#pricing" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>}
             <a href="#faq" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">FAQ</a>
             <a href="#contact" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Contact</a>
+            <Link href="/blog" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Blog</Link>
           </div>
 
           <div className="hidden md:flex items-center gap-3">
@@ -318,6 +319,7 @@ export default async function LandingPage() {
               {registrationOpen && <a href="#pricing" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Pricing</a>}
               <a href="#faq" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">FAQ</a>
               <a href="#contact" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Contact</a>
+              <Link href="/blog" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Blog</Link>
               <hr className="my-2 border-gray-100" />
               {isLoggedIn ? (
                 <Link href="/dashboard" className="block px-4 py-2 text-sm font-medium text-blue-600">
@@ -624,6 +626,7 @@ export default async function LandingPage() {
               {registrationOpen && <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>}
               <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
               <a href="#contact" className="hover:text-white transition-colors">Contact</a>
+              <Link href="/blog" className="hover:text-white transition-colors">Blog</Link>
               <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
               <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
               <Link href="/sign-in" className="hover:text-white transition-colors">Sign In</Link>
