@@ -85,7 +85,7 @@ export function FileUploader({ onUpload, disabled }: FileUploaderProps) {
                 PDF or images (JPEG, PNG, HEIC) &middot; Max 10MB each
               </p>
               <p className="text-gray-400 text-xs mt-1">
-                Text-based PDFs give the best results. Scanned PDFs and images are also supported.
+                Text-based PDFs give the best results. Scanned PDFs and images are supported but may need more human review.
               </p>
             </>
           )}

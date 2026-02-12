@@ -110,29 +110,49 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">8. Disclaimer of Warranties</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">8. Accuracy of Results and Human Review</h2>
+            <p className="mb-3">
+              BankRead uses AI and optical character recognition (OCR) to extract transaction data from your documents.
+              <strong> We are not liable or responsible for the accuracy, completeness, or correctness of the extracted data.</strong> AI-generated
+              results may contain errors, including but not limited to incorrect amounts, dates, descriptions, or categorizations.
+            </p>
+            <p className="mb-3">
+              <strong>You acknowledge and agree that:</strong>
+            </p>
+            <ul className="list-disc pl-5 space-y-2">
+              <li>All extracted data should be treated as a draft that requires human verification.</li>
+              <li>You are solely responsible for reviewing and verifying all results before relying on them for any purpose, including but not limited to accounting, tax filing, financial reporting, or legal compliance.</li>
+              <li>Scanned PDFs and images may produce less accurate results than text-based PDFs and require additional human review.</li>
+              <li>BankRead is not a substitute for professional accounting, bookkeeping, or financial advice.</li>
+              <li>We are not liable for any decisions made or actions taken based on the output of this Service.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">9. Disclaimer of Warranties</h2>
             <p>
               The Service is provided &quot;as is&quot; and &quot;as available&quot; without warranties of any kind, either
               express or implied, including but not limited to implied warranties of merchantability, fitness for a
               particular purpose, and non-infringement. We do not warrant that the Service will be uninterrupted,
-              error-free, or completely secure. AI-generated categorization and data extraction may contain errors;
-              you are responsible for verifying the accuracy of extracted data.
+              error-free, or completely secure. We make no guarantees regarding the accuracy of AI-generated data extraction
+              or categorization.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">9. Limitation of Liability</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">10. Limitation of Liability</h2>
             <p>
               To the maximum extent permitted by applicable law, BankRead and its officers, employees, and affiliates
               shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any
-              loss of profits, data, or goodwill, arising out of or in connection with your use of the Service.
+              loss of profits, data, or goodwill, arising out of or in connection with your use of the Service,
+              including any damages arising from inaccurate or incomplete data extraction.
               Our total aggregate liability shall not exceed the amount you paid us in the twelve (12) months
               preceding the claim.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">10. Termination</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">11. Termination</h2>
             <p>
               We may suspend or terminate your account at any time if you violate these Terms or engage in activity
               that harms the Service or other users. You may delete your account at any time by contacting us.
@@ -142,7 +162,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">11. Governing Law</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">12. Governing Law</h2>
             <p>
               These Terms are governed by and construed in accordance with the laws of the Province of Ontario,
               Canada, without regard to its conflict of law principles. Any disputes arising under these Terms
@@ -151,7 +171,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">12. Changes to These Terms</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">13. Changes to These Terms</h2>
             <p>
               We may update these Terms from time to time. We will notify you of material changes by posting the
               revised Terms on this page and updating the &quot;Last updated&quot; date. Your continued use of the
@@ -160,7 +180,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">13. Contact Us</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">14. Contact Us</h2>
             <p>
               If you have questions about these Terms, contact us at:
             </p>

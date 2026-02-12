@@ -16,6 +16,7 @@ export default function SignUpPage() {
   const [orgName, setOrgName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -290,9 +291,27 @@ export default function SignUpPage() {
                 </div>
               </div>
 
+              <div className="flex items-start gap-2">
+                <input
+                  id="terms"
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  required
+                />
+                <label htmlFor="terms" className="text-sm text-gray-600">
+                  I agree to the{" "}
+                  <Link href="/terms" target="_blank" className="text-blue-600 hover:underline">
+                    Terms of Service
+                  </Link>
+                  , including that BankRead is not liable or responsible for the accuracy of extracted data and that human review of results is required.
+                </label>
+              </div>
+
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !termsAccepted}
                 className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? "Creating account..." : "Create account"}
