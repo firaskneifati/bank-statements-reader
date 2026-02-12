@@ -22,6 +22,7 @@ from app.services.image_service import (
 )
 from app.services.docai_service import extract_text_with_docai
 from app.services.categorization_service import categorize_transactions
+from app.services.spreadsheet_service import extract_text_from_spreadsheet
 from app.auth.dependencies import CurrentUser
 from app.limiter import limiter
 from app.db.engine import get_session
@@ -32,7 +33,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-ALLOWED_EXTENSIONS = {".pdf"} | SUPPORTED_IMAGE_EXTENSIONS
+SPREADSHEET_EXTENSIONS = {".csv", ".xlsx"}
+ALLOWED_EXTENSIONS = {".pdf"} | SUPPORTED_IMAGE_EXTENSIONS | SPREADSHEET_EXTENSIONS
 
 
 def _get_extension(filename: str) -> str:
@@ -45,7 +47,7 @@ def _validate_file(contents: bytes, filename: str) -> None:
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"File '{filename}' has unsupported format. Accepted: PDF, JPEG, PNG, HEIC",
+            detail=f"File '{filename}' has unsupported format. Accepted: PDF, JPEG, PNG, HEIC, CSV, XLSX",
         )
 
     if len(contents) > settings.max_file_size_bytes:
@@ -60,6 +62,14 @@ def _validate_file(contents: bytes, filename: str) -> None:
                 status_code=400,
                 detail=f"File '{filename}' is not a valid PDF",
             )
+    elif ext == ".xlsx":
+        if not contents[:4].startswith(b"PK\x03\x04"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"File '{filename}' is not a valid XLSX file",
+            )
+    elif ext == ".csv":
+        pass
     else:
         validate_image(contents, filename)
 
@@ -79,6 +89,8 @@ async def _process_single_file(
 
     if ext == ".pdf":
         return await _process_pdf(contents, filename, custom_categories)
+    elif ext in SPREADSHEET_EXTENSIONS:
+        return await _process_spreadsheet(contents, filename, ext, custom_categories)
     else:
         return await _process_image(contents, filename, custom_categories)
 
@@ -261,6 +273,56 @@ async def _process_image(
                 pass
 
 
+async def _process_spreadsheet(
+    contents: bytes,
+    filename: str,
+    ext: str,
+    custom_categories: list[dict] | None,
+) -> tuple[StatementResult, int]:
+    """Process a CSV or XLSX spreadsheet."""
+    bytes_processed = len(contents)
+
+    with tempfile.NamedTemporaryFile(
+        suffix=ext, dir=settings.upload_dir, delete=False
+    ) as tmp:
+        tmp.write(contents)
+        tmp_path = tmp.name
+
+    try:
+        text, row_count = extract_text_from_spreadsheet(tmp_path)
+
+        if not text.strip():
+            raise HTTPException(
+                status_code=400,
+                detail=f"File '{filename}' appears to be empty or has no data rows",
+            )
+
+        logger.info(f"Spreadsheet '{filename}': {row_count} data rows extracted")
+
+        transactions = await parse_transactions(
+            text, filename, custom_categories=custom_categories
+        )
+        if settings.mock_mode:
+            transactions = categorize_transactions(transactions)
+
+        total_debits = sum(t.amount for t in transactions if t.type == "debit")
+        total_credits = sum(t.amount for t in transactions if t.type == "credit")
+
+        result = StatementResult(
+            filename=filename,
+            transactions=transactions,
+            total_debits=round(total_debits, 2),
+            total_credits=round(total_credits, 2),
+            transaction_count=len(transactions),
+            page_count=1,
+            actual_pages=1,
+            processing_type="spreadsheet",
+        )
+        return (result, bytes_processed)
+    finally:
+        os.unlink(tmp_path)
+
+
 def _usage_from_org(org: Organization) -> UsageStats:
     return UsageStats(
         total_uploads=org.total_uploads,
@@ -325,7 +387,7 @@ async def upload_statements(
     total_bytes = sum(r[1] for r in results)
     total_pages = sum(s.page_count for s in statements)
     total_actual_pages = sum(s.actual_pages for s in statements)
-    total_text_pages = sum(s.actual_pages for s in statements if s.processing_type in ("text", "ocr"))
+    total_text_pages = sum(s.actual_pages for s in statements if s.processing_type in ("text", "ocr", "spreadsheet"))
     total_image_pages = sum(s.actual_pages for s in statements if s.processing_type == "image")
 
     # Enforce monthly page limit (post-check: reject if this upload would exceed the limit)
