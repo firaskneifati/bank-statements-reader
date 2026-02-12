@@ -73,6 +73,9 @@ export function FileUploader({ onUpload, disabled }: FileUploaderProps) {
               <p className="text-gray-400 text-xs mt-1">
                 Text-based PDFs give the best results. Scanned PDFs and images are supported but may need more human review.
               </p>
+              <p className="text-gray-400 text-xs mt-1 sm:hidden">
+                On iPhone, uploading via &quot;Choose Files&quot; gives better quality than Camera or Photo Library.
+              </p>
             </>
           )}
           {acceptedFiles.length > 0 && !disabled && (
