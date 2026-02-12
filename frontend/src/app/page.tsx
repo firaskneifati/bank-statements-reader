@@ -218,14 +218,6 @@ export default async function LandingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Skip to content */}
-      <a
-        href="#main"
-        className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-20 focus-visible:left-4 focus-visible:z-50 focus-visible:px-4 focus-visible:py-2 focus-visible:bg-blue-600 focus-visible:text-white focus-visible:rounded-lg focus-visible:text-sm focus-visible:shadow-lg"
-      >
-        Skip to content
-      </a>
-
       {/* Sticky Nav */}
       <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-200" aria-label="Main navigation">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
