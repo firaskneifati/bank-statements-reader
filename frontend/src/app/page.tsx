@@ -529,7 +529,7 @@ export default async function LandingPage() {
                 Start free. Upgrade when you need more pages.
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 mx-auto">
               {PLANS.map((plan) => (
                 <div
                   key={plan.name}
