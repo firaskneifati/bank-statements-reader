@@ -65,6 +65,12 @@ async def extract_text_with_docai(file_bytes: bytes, mime_type: str) -> str | No
             return None
 
         combined = "\n\n".join(all_text_parts)
+        # If OCR extracted very little text, the document is likely unreadable
+        stripped = combined.strip()
+        if len(stripped) < 50:
+            logger.warning(f"Document AI returned only {len(stripped)} chars — likely unreadable")
+            return None
+
         logger.info(f"Document AI extracted {len(combined)} chars from {len(chunks)} chunk(s)")
         return combined
 
