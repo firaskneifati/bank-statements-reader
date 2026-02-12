@@ -65,67 +65,10 @@ async def extract_text_with_docai(file_bytes: bytes, mime_type: str) -> str | No
 
 
 def _format_document(document) -> str:
-    """Format Document AI output — prefer table structure, fall back to plain text."""
+    """Return the full OCR text from Document AI — preserves all content in reading order."""
     if not document:
         return ""
-
-    parts: list[str] = []
-
-    # Extract tables as pipe-delimited markdown
-    for page in document.pages:
-        for table in page.tables:
-            table_text = _format_table(table, document.text)
-            if table_text:
-                parts.append(table_text)
-
-    if parts:
-        # Include any non-table text as context (headers, footers, etc.)
-        if document.text:
-            parts.insert(0, document.text)
-        return "\n\n".join(parts)
-
-    # No tables found — return raw text
     return document.text or ""
-
-
-def _format_table(table, full_text: str) -> str:
-    """Convert a Document AI table to pipe-delimited markdown."""
-    rows: list[list[str]] = []
-
-    # Header rows
-    if table.header_rows:
-        for row in table.header_rows:
-            cells = [_get_cell_text(cell, full_text) for cell in row.cells]
-            rows.append(cells)
-
-    # Body rows
-    if table.body_rows:
-        for row in table.body_rows:
-            cells = [_get_cell_text(cell, full_text) for cell in row.cells]
-            rows.append(cells)
-
-    if not rows:
-        return ""
-
-    lines: list[str] = []
-    for i, row in enumerate(rows):
-        lines.append("| " + " | ".join(row) + " |")
-        # Add separator after header
-        if i == 0 and table.header_rows:
-            lines.append("| " + " | ".join("---" for _ in row) + " |")
-
-    return "\n".join(lines)
-
-
-def _get_cell_text(cell, full_text: str) -> str:
-    """Extract text content from a table cell using text anchors."""
-    text = ""
-    if cell.layout and cell.layout.text_anchor and cell.layout.text_anchor.text_segments:
-        for segment in cell.layout.text_anchor.text_segments:
-            start = int(segment.start_index) if segment.start_index else 0
-            end = int(segment.end_index) if segment.end_index else 0
-            text += full_text[start:end]
-    return text.strip().replace("\n", " ")
 
 
 def _split_pdf_bytes(pdf_bytes: bytes) -> list[bytes]:

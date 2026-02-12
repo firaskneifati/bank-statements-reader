@@ -117,7 +117,7 @@ async def _parse_with_claude(
     import anthropic
 
     category_block = _build_category_block(custom_categories)
-    prompt = PARSE_PROMPT_TEMPLATE.format(categories=category_block, text=text[:15000])
+    prompt = PARSE_PROMPT_TEMPLATE.format(categories=category_block, text=text[:100000])
 
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
