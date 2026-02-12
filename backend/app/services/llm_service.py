@@ -9,8 +9,9 @@ logger = logging.getLogger(__name__)
 
 PARSE_PROMPT_TEMPLATE = """You are a bank statement parser. Extract all transactions from the following bank statement text.
 
-IMPORTANT: If the text does NOT contain recognizable bank statement or financial transaction data (e.g. it's gibberish, unrelated content, or too unclear to read), return an empty JSON array: []
-Do NOT guess or fabricate transactions. Only return transactions you can clearly identify in the text.
+CRITICAL: You must be 100% certain of every single character and number you extract. If ANY character, digit, date, amount, or description is not perfectly clear and readable, return an empty JSON array: []
+Do NOT guess, approximate, or fill in unclear characters. If even one transaction has a blurry digit, an unclear letter, or an ambiguous character, reject the ENTIRE file by returning [].
+Only return transactions if you can read every single character with complete confidence.
 
 Return a JSON array of transactions. Each transaction should have:
 - "date": string in YYYY-MM-DD format (the transaction date)
@@ -69,8 +70,9 @@ def _build_category_block(custom_categories: list[dict] | None) -> str:
 
 VISION_PROMPT_TEMPLATE = """You are a bank statement parser. Carefully read all visible text in the images and extract all transactions.
 
-IMPORTANT: If the image does NOT contain a recognizable bank statement or financial transaction data (e.g. it's a random photo, too blurry, unrelated content, or you cannot clearly read transaction details), return an empty JSON array: []
-Do NOT guess or fabricate transactions. Only return transactions you can clearly see and read in the image.
+CRITICAL: You must be 100% certain of every single character and number you extract. If ANY character, digit, date, amount, or description is not perfectly clear and readable in the image, return an empty JSON array: []
+Do NOT guess, approximate, or fill in unclear characters. If even one transaction has a blurry digit, an unclear letter, or an ambiguous character, reject the ENTIRE file by returning [].
+Only return transactions if you can read every single character with complete confidence. A slightly out-of-focus photo, poor lighting, or partial visibility means you must return [].
 
 Return a JSON array of transactions. Each transaction should have:
 - "date": string in YYYY-MM-DD format (the transaction date)
