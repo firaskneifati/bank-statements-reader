@@ -238,20 +238,31 @@ export default function Home() {
   };
 
   const handleCategoryChange = (stmtIndex: number, txIndex: number, newCategory: string) => {
+    handleFieldChange(stmtIndex, txIndex, "category", newCategory);
+  };
+
+  const handleFieldChange = (stmtIndex: number, txIndex: number, field: string, value: string | number | null) => {
     setData((prev) => {
       if (!prev) return prev;
-      return {
+      const updated = {
         ...prev,
         statements: prev.statements.map((s, si) => {
           if (si !== stmtIndex) return s;
+          const updatedTxs = s.transactions.map((t, ti) =>
+            ti === txIndex ? { ...t, [field]: value } : t
+          );
+          const totalDebits = updatedTxs.reduce((sum, t) => sum + (t.type === "debit" ? t.amount : 0), 0);
+          const totalCredits = updatedTxs.reduce((sum, t) => sum + (t.type === "credit" ? t.amount : 0), 0);
           return {
             ...s,
-            transactions: s.transactions.map((t, ti) =>
-              ti === txIndex ? { ...t, category: newCategory } : t
-            ),
+            transactions: updatedTxs,
+            total_debits: Math.round(totalDebits * 100) / 100,
+            total_credits: Math.round(totalCredits * 100) / 100,
+            transaction_count: updatedTxs.length,
           };
         }),
       };
+      return updated;
     });
   };
 
@@ -469,6 +480,7 @@ export default function Home() {
             transactions={filteredTransactions}
             categories={categories.map((c) => c.name)}
             onCategoryChange={handleCategoryChange}
+            onFieldChange={handleFieldChange}
           />
           <CategorySummary transactions={filteredTransactions} />
         </>

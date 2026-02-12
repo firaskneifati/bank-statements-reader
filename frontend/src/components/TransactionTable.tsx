@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,7 +9,6 @@ import {
   createColumnHelper,
   SortingState,
 } from "@tanstack/react-table";
-import { useState } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Transaction } from "@/lib/types";
 
@@ -23,71 +22,192 @@ function formatCurrency(value: number | null): string {
   }).format(value);
 }
 
+function EditableCell({
+  value,
+  onSave,
+  type = "text",
+  className,
+  displayValue,
+}: {
+  value: string | number | null;
+  onSave: (val: string | number | null) => void;
+  type?: "text" | "number";
+  className?: string;
+  displayValue?: React.ReactNode;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value ?? ""));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  const commit = () => {
+    setEditing(false);
+    if (type === "number") {
+      const num = parseFloat(draft);
+      if (!isNaN(num) && num !== value) onSave(num);
+      else if (draft === "" && value !== null) onSave(null);
+    } else {
+      if (draft !== String(value ?? "")) onSave(draft || null);
+    }
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type={type}
+        step={type === "number" ? "0.01" : undefined}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") { setDraft(String(value ?? "")); setEditing(false); }
+        }}
+        className="w-full bg-white border border-blue-400 rounded px-1.5 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+      />
+    );
+  }
+
+  return (
+    <span
+      onClick={() => { setDraft(String(value ?? "")); setEditing(true); }}
+      className={`cursor-pointer hover:bg-blue-50 rounded px-1 -mx-1 ${className || ""}`}
+      title="Click to edit"
+    >
+      {displayValue ?? (value !== null && value !== "" ? String(value) : <span className="text-gray-300">—</span>)}
+    </span>
+  );
+}
+
 interface TransactionTableProps {
   transactions: Transaction[];
   categories?: string[];
   onCategoryChange?: (stmtIndex: number, txIndex: number, newCategory: string) => void;
+  onFieldChange?: (stmtIndex: number, txIndex: number, field: string, value: string | number | null) => void;
 }
 
-export function TransactionTable({ transactions, categories, onCategoryChange }: TransactionTableProps) {
+export function TransactionTable({ transactions, categories, onCategoryChange, onFieldChange }: TransactionTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const hasPostingDates = transactions.some((t) => t.posting_date);
   const hasSources = transactions.some((t) => t.source);
 
+  const getIndices = (info: { row: { original: Transaction } }) => {
+    const orig = info.row.original as unknown as Record<string, unknown>;
+    return { stmtIdx: orig._stmtIndex as number, txIdx: orig._txIndex as number };
+  };
+
   const columns = useMemo(
     () => [
       columnHelper.accessor("date", {
         header: "Date",
-        cell: (info) => info.getValue(),
+        cell: (info) => {
+          if (!onFieldChange) return info.getValue();
+          const { stmtIdx, txIdx } = getIndices(info);
+          return (
+            <EditableCell
+              value={info.getValue()}
+              onSave={(v) => onFieldChange(stmtIdx, txIdx, "date", v)}
+            />
+          );
+        },
       }),
       ...(hasPostingDates
         ? [
             columnHelper.accessor("posting_date", {
               header: "Posting Date",
-              cell: (info) => info.getValue() || "",
+              cell: (info) => {
+                if (!onFieldChange) return info.getValue() || "";
+                const { stmtIdx, txIdx } = getIndices(info);
+                return (
+                  <EditableCell
+                    value={info.getValue()}
+                    onSave={(v) => onFieldChange(stmtIdx, txIdx, "posting_date", v)}
+                  />
+                );
+              },
             }),
           ]
         : []),
       columnHelper.accessor("description", {
         header: "Description",
-        cell: (info) => (
-          <span className="font-medium">{info.getValue()}</span>
-        ),
+        cell: (info) => {
+          if (!onFieldChange) return <span className="font-medium">{info.getValue()}</span>;
+          const { stmtIdx, txIdx } = getIndices(info);
+          return (
+            <EditableCell
+              value={info.getValue()}
+              onSave={(v) => onFieldChange(stmtIdx, txIdx, "description", v)}
+              displayValue={<span className="font-medium">{info.getValue()}</span>}
+            />
+          );
+        },
       }),
       columnHelper.accessor("amount", {
         header: "Amount",
         cell: (info) => {
           const tx = info.row.original;
-          return (
-            <span
-              className={
-                tx.type === "credit" ? "text-green-700 font-semibold" : "text-red-700 font-semibold"
-              }
-            >
-              {tx.type === "credit" ? "+" : "-"}
-              {formatCurrency(info.getValue())}
+          const display = (
+            <span className={tx.type === "credit" ? "text-green-700 font-semibold" : "text-red-700 font-semibold"}>
+              {tx.type === "credit" ? "+" : "-"}{formatCurrency(info.getValue())}
             </span>
+          );
+          if (!onFieldChange) return display;
+          const { stmtIdx, txIdx } = getIndices(info);
+          return (
+            <EditableCell
+              value={info.getValue()}
+              type="number"
+              onSave={(v) => onFieldChange(stmtIdx, txIdx, "amount", v)}
+              displayValue={display}
+            />
           );
         },
       }),
       columnHelper.accessor("type", {
         header: "Type",
-        cell: (info) => (
-          <span
-            className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-              info.getValue() === "credit"
-                ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-800"
-            }`}
-          >
-            {info.getValue()}
-          </span>
-        ),
+        cell: (info) => {
+          const current = info.getValue();
+          if (!onFieldChange) {
+            return (
+              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${current === "credit" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                {current}
+              </span>
+            );
+          }
+          const { stmtIdx, txIdx } = getIndices(info);
+          return (
+            <select
+              value={current}
+              onChange={(e) => onFieldChange(stmtIdx, txIdx, "type", e.target.value)}
+              className={`appearance-none px-2 py-0.5 pr-5 rounded-full text-xs font-medium cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%226%22%3E%3Cpath%20d%3D%22M0%200l5%206%205-6z%22%20fill%3D%22%23666%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_6px] bg-[right_6px_center] bg-no-repeat ${
+                current === "credit" ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200"
+              }`}
+            >
+              <option value="debit">debit</option>
+              <option value="credit">credit</option>
+            </select>
+          );
+        },
       }),
       columnHelper.accessor("balance", {
         header: "Balance",
-        cell: (info) => formatCurrency(info.getValue()),
+        cell: (info) => {
+          if (!onFieldChange) return formatCurrency(info.getValue());
+          const { stmtIdx, txIdx } = getIndices(info);
+          return (
+            <EditableCell
+              value={info.getValue()}
+              type="number"
+              onSave={(v) => onFieldChange(stmtIdx, txIdx, "balance", v)}
+              displayValue={info.getValue() !== null ? formatCurrency(info.getValue()) : undefined}
+            />
+          );
+        },
       }),
       columnHelper.accessor("category", {
         header: "Category",
@@ -146,7 +266,7 @@ export function TransactionTable({ transactions, categories, onCategoryChange }:
           ]
         : []),
     ],
-    [hasPostingDates, hasSources, categories, onCategoryChange]
+    [hasPostingDates, hasSources, categories, onCategoryChange, onFieldChange]
   );
 
   const table = useReactTable({

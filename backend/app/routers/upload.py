@@ -123,8 +123,8 @@ async def _process_pdf(
                 docai_text, ocr_confidence = docai_result
                 logger.info(f"Using Document AI OCR for '{filename}' (confidence: {ocr_confidence:.2%})")
 
-                if ocr_confidence < 0.97:
-                    logger.warning(f"OCR confidence {ocr_confidence:.2%} below 97% threshold for '{filename}' — rejecting")
+                if ocr_confidence < 0.95:
+                    logger.warning(f"OCR confidence {ocr_confidence:.2%} below 95% threshold for '{filename}' — rejecting")
                     transactions = []
                 else:
                     transactions = await parse_transactions(
@@ -215,8 +215,8 @@ async def _process_image(
             docai_text, ocr_confidence = docai_result
             logger.info(f"Using Document AI OCR for image '{filename}' (confidence: {ocr_confidence:.2%})")
 
-            if ocr_confidence < 0.97:
-                logger.warning(f"OCR confidence {ocr_confidence:.2%} below 97% threshold for '{filename}' — rejecting")
+            if ocr_confidence < 0.95:
+                logger.warning(f"OCR confidence {ocr_confidence:.2%} below 95% threshold for '{filename}' — rejecting")
                 transactions = []
             else:
                 transactions = await parse_transactions(
