@@ -6,22 +6,28 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://bankread.ai"),
   title: {
-    default: "BankRead — Bank Statement Reader",
+    default: "BankRead — AI Bank Statement Reader | PDF to CSV & Excel",
     template: "%s | BankRead",
   },
   description:
-    "Upload PDF bank statements and extract structured transactions. Export to CSV or Excel in seconds.",
+    "Upload PDF bank statements and automatically extract transactions with AI categorization. Export to CSV or Excel in seconds. Supports TD, RBC, BMO, Scotiabank, CIBC, and more.",
   keywords: [
     "bank statement reader",
-    "PDF parser",
+    "bank statement parser",
+    "PDF to CSV",
+    "PDF to Excel",
     "transaction extractor",
-    "CSV export",
-    "bank statement to Excel",
+    "bank statement converter",
+    "AI categorization",
+    "financial data extraction",
   ],
+  alternates: {
+    canonical: "https://bankread.ai",
+  },
   openGraph: {
-    title: "BankRead — Bank Statement Reader",
+    title: "BankRead — AI Bank Statement Reader | PDF to CSV & Excel",
     description:
-      "Upload PDF bank statements and extract structured transactions. Export to CSV or Excel in seconds.",
+      "Upload PDF bank statements and automatically extract transactions with AI categorization. Export to CSV or Excel in seconds.",
     url: "https://bankread.ai",
     siteName: "BankRead",
     locale: "en_US",
@@ -29,13 +35,20 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "BankRead — Bank Statement Reader",
+    title: "BankRead — AI Bank Statement Reader | PDF to CSV & Excel",
     description:
-      "Upload PDF bank statements and extract structured transactions. Export to CSV or Excel in seconds.",
+      "Upload PDF bank statements and automatically extract transactions with AI categorization. Export to CSV or Excel in seconds.",
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 

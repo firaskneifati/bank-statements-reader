@@ -1,5 +1,6 @@
-from datetime import datetime, timezone
-
+import hashlib
+import logging
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -22,6 +23,8 @@ from app.auth.schemas import (
     TotpSetupResponse,
     TotpVerifyRequest,
     TotpDisableRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
 from app.config import settings
 from app.services.audit import log_audit
@@ -50,7 +53,7 @@ async def register(request: Request, body: RegisterRequest, session: AsyncSessio
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
-    org = Organization(name=body.organization_name or f"{body.full_name}'s Organization")
+    org = Organization(name=body.organization_name or f"{body.full_name}'s Organization", page_limit=50)
     session.add(org)
     await session.flush()
 
@@ -221,3 +224,78 @@ async def totp_disable(
     await session.commit()
     await log_audit(session, "2fa_disable", request, user_id=current_user.id, org_id=current_user.org_id)
     return {"detail": "2FA disabled successfully"}
+
+
+# ── Password reset endpoints ────────────────────────────────────────
+
+logger = logging.getLogger(__name__)
+
+
+def _password_fingerprint(password_hash: str) -> str:
+    return hashlib.sha256(password_hash.encode()).hexdigest()[:16]
+
+
+@router.post("/forgot-password")
+@limiter.limit("3/minute")
+async def forgot_password(request: Request, body: ForgotPasswordRequest, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(User).where(User.email == body.email))
+    user = result.scalar_one_or_none()
+
+    if user and user.password_hash:
+        token = create_access_token(
+            {
+                "sub": str(user.id),
+                "purpose": "password_reset",
+                "pfp": _password_fingerprint(user.password_hash),
+            },
+            expires_delta=timedelta(hours=1),
+        )
+        reset_link = f"{settings.frontend_url}/reset-password?token={token}"
+
+        import resend
+
+        resend.api_key = settings.resend_api_key
+        try:
+            resp = resend.Emails.send({
+                "from": "BankRead <no-reply@bankread.ai>",
+                "to": [user.email],
+                "subject": "Reset your BankRead password",
+                "html": (
+                    f"<p>Hi {user.full_name},</p>"
+                    f'<p>Click the link below to reset your password. It expires in 1 hour.</p>'
+                    f'<p><a href="{reset_link}">Reset Password</a></p>'
+                    f"<p>If you didn't request this, you can safely ignore this email.</p>"
+                ),
+            })
+            logger.info("Resend response: %s (to: %s)", resp, user.email)
+        except Exception:
+            logger.exception("Failed to send password reset email")
+
+    # Always return success to prevent email enumeration
+    return {"detail": "If that email exists, a reset link has been sent"}
+
+
+@router.post("/reset-password")
+@limiter.limit("3/minute")
+async def reset_password(request: Request, body: ResetPasswordRequest, session: AsyncSession = Depends(get_session)):
+    payload = decode_access_token(body.token)
+    if not payload or payload.get("purpose") != "password_reset":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
+
+    user_id = payload.get("sub")
+    result = await session.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user or not user.password_hash:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
+
+    # Verify password fingerprint (ensures one-time use)
+    if _password_fingerprint(user.password_hash) != payload.get("pfp"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This reset link has already been used")
+
+    user.password_hash = hash_password(body.password)
+    session.add(user)
+    await session.commit()
+
+    await log_audit(session, "password_reset", request, user_id=user.id, org_id=user.org_id, detail=user.email)
+    return {"detail": "Password has been reset successfully"}

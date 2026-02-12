@@ -47,11 +47,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isOnAuth =
+      const isPublic =
+        nextUrl.pathname === "/" ||
         nextUrl.pathname.startsWith("/sign-in") ||
-        nextUrl.pathname.startsWith("/sign-up");
+        nextUrl.pathname.startsWith("/sign-up") ||
+        nextUrl.pathname.startsWith("/forgot-password") ||
+        nextUrl.pathname.startsWith("/reset-password");
 
-      if (isOnAuth) return true; // always allow auth pages
+      if (isPublic) return true; // always allow public pages
       if (!isLoggedIn) return false; // redirect to signIn page
       return true;
     },

@@ -66,6 +66,8 @@ const PLANS = [
   },
 ];
 
+const registrationOpen = process.env.NEXT_PUBLIC_REGISTRATION_OPEN === "true";
+
 export default function BillingPage() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
@@ -94,6 +96,21 @@ export default function BillingPage() {
         }
         const status = await fetchBillingStatus();
         setBilling(status);
+
+        // Auto-trigger checkout if redirected from sign-up with a plan choice
+        const upgradePlan = searchParams.get("upgrade");
+        if (upgradePlan && upgradePlan !== "free" && status.plan === "free") {
+          setActionLoading(upgradePlan);
+          try {
+            const { url } = await createCheckoutSession(upgradePlan);
+            window.location.href = url;
+            return;
+          } catch {
+            setError("Failed to start checkout. You can upgrade manually below.");
+          } finally {
+            setActionLoading(null);
+          }
+        }
       } catch {
         setError("Failed to load billing status");
       } finally {
@@ -159,6 +176,26 @@ export default function BillingPage() {
   };
 
   if (!session) return null;
+
+  // Show a clean redirect screen when auto-upgrading from sign-up flow
+  const upgradePlan = searchParams.get("upgrade");
+  if (upgradePlan && upgradePlan !== "free" && (loading || actionLoading)) {
+    return (
+      <>
+        <Header />
+        <div className="max-w-md mx-auto px-4 py-24 text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
+          <h2 className="text-lg font-semibold text-gray-900">Redirecting to secure checkout...</h2>
+          <p className="text-sm text-gray-500 mt-1">Setting up your {upgradePlan} plan via Stripe.</p>
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mt-4">
+              {error}
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
 
   const currentPlan = billing?.plan || "free";
 
@@ -314,6 +351,10 @@ export default function BillingPage() {
                       // No button for free plan — handled by cancel
                       <div className="w-full py-2 text-center text-sm text-gray-400">
                         {currentPlan === "free" ? "" : "Cancel to downgrade"}
+                      </div>
+                    ) : !registrationOpen ? (
+                      <div className="w-full py-2 text-center text-sm text-gray-400">
+                        Coming soon
                       </div>
                     ) : (
                       <button

@@ -166,7 +166,10 @@ async def billing_status(
         try:
             stripe.api_key = settings.stripe_secret_key
             sub = stripe.Subscription.retrieve(org.stripe_subscription_id)
-            current_period_end = sub["current_period_end"]
+            # In newer Stripe API versions, current_period_end moved to item level
+            current_period_end = sub.get("current_period_end")
+            if current_period_end is None and sub.get("items") and sub["items"].get("data"):
+                current_period_end = sub["items"]["data"][0].get("current_period_end")
             cancel_at_period_end = sub.get("cancel_at_period_end", False)
         except Exception:
             logger.exception("Failed to fetch subscription details from Stripe")

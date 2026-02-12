@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "BankRead — Bank Statement Reader",
     short_name: "BankRead",
     description: "Parse bank statements into structured transactions",
-    start_url: "/",
+    start_url: "/dashboard",
     display: "standalone",
     background_color: "#f9fafb",
     theme_color: "#2563eb",
