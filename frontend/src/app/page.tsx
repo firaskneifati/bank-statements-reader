@@ -26,6 +26,12 @@ const FEATURES = [
       "Upload any bank statement PDF — text-based or scanned — and extract every transaction automatically. Supports all major Canadian and international banks.",
   },
   {
+    icon: FileSpreadsheet,
+    title: "CSV & Excel Upload",
+    description:
+      "Already have your transactions in a spreadsheet? Upload a CSV or Excel file and let the AI categorize every transaction — no column mapping needed.",
+  },
+  {
     icon: ScanLine,
     title: "Scanned PDF & Image Support",
     description:
@@ -74,7 +80,7 @@ const STEPS = [
     icon: Upload,
     step: "1",
     title: "Upload Your Statement",
-    description: "Drag and drop a PDF, image, or snap a photo with your phone. We support all major bank formats.",
+    description: "Drag and drop a PDF, CSV, Excel file, image, or snap a photo with your phone. We support all major bank formats.",
   },
   {
     icon: Cpu,
@@ -138,7 +144,7 @@ const FAQS = [
   {
     question: "Which banks and formats does BankRead support?",
     answer:
-      "BankRead supports PDF statements (text-based and scanned), photos (JPEG, PNG, HEIC), and camera captures from all major Canadian banks including TD, RBC, BMO, Scotiabank, CIBC, and US banks like Chase, Bank of America, and Wells Fargo. It also works with most international bank statement formats.",
+      "BankRead supports PDF statements (text-based and scanned), spreadsheets (CSV, Excel .xlsx), photos (JPEG, PNG, HEIC), and camera captures from all major Canadian banks including TD, RBC, BMO, Scotiabank, CIBC, and US banks like Chase, Bank of America, and Wells Fargo. It also works with most international bank statement formats.",
   },
   {
     question: "Is my financial data secure?",
@@ -156,9 +162,9 @@ const FAQS = [
       "Yes. BankRead exports to CSV and Excel formats, which are compatible with QuickBooks, Xero, Wave, FreshBooks, and virtually every accounting application on the market.",
   },
   {
-    question: "Can I upload scanned PDFs or photos of statements?",
+    question: "Can I upload scanned PDFs, photos, or spreadsheets?",
     answer:
-      "Yes. BankRead automatically detects scanned PDFs and processes them using AI vision. You can also upload photos (JPEG, PNG, HEIC) of paper statements directly, or use the built-in camera capture on mobile. Image-based documents count as 3x pages against your monthly quota due to higher processing costs.",
+      "Yes. BankRead automatically detects scanned PDFs and processes them using AI vision. You can also upload photos (JPEG, PNG, HEIC) of paper statements directly, or use the built-in camera capture on mobile. Spreadsheet uploads (CSV, Excel .xlsx) are also supported — the AI categorizes every transaction automatically. Image-based documents count as 3x pages against your monthly quota due to higher processing costs.",
   },
   {
     question: "What happens if I exceed my monthly page limit?",
@@ -207,12 +213,13 @@ export default async function LandingPage() {
         name: "BankRead",
         url: "https://bankread.ai",
         description:
-          "AI-powered bank statement reader that extracts transactions from PDF bank statements, scanned documents, and photos. Categorizes with AI and exports to CSV or Excel. Supports TD, RBC, BMO, Scotiabank, CIBC, Chase, Bank of America, Wells Fargo, and most international banks.",
+          "AI-powered bank statement reader that extracts transactions from PDF bank statements, CSV and Excel spreadsheets, scanned documents, and photos. Categorizes with AI and exports to CSV or Excel. Supports TD, RBC, BMO, Scotiabank, CIBC, Chase, Bank of America, Wells Fargo, and most international banks.",
         applicationCategory: "FinanceApplication",
         operatingSystem: "Web",
         browserRequirements: "Requires a modern web browser",
         featureList: [
           "PDF bank statement parsing (text-based and scanned)",
+          "CSV and Excel spreadsheet upload with AI categorization",
           "Image and photo upload (JPEG, PNG, HEIC)",
           "Mobile camera capture with native flash support",
           "AI-powered transaction categorization",
@@ -378,7 +385,7 @@ export default async function LandingPage() {
                 </span>
               </h1>
               <p className="mt-6 text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto animate-fade-in-up delay-100">
-                Upload a PDF, scanned document, or photo of any bank statement. Our AI extracts every transaction,
+                Upload a PDF, spreadsheet, scanned document, or photo of any bank statement. Our AI extracts every transaction,
                 categorizes it, and exports to CSV or Excel — in seconds.
               </p>
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up delay-200">

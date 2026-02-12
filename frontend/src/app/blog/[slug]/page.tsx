@@ -464,16 +464,16 @@ const bankContent: Record<string, BankContent> = {
 
 const howToSteps = [
   {
-    name: "Download your bank statement PDF or take a photo",
-    text: "Log in to your online banking portal and download the PDF statement, or take a photo of a paper statement with your phone camera.",
+    name: "Download your bank statement PDF, export a spreadsheet, or take a photo",
+    text: "Log in to your online banking portal and download the PDF statement or export transactions as CSV/Excel, or take a photo of a paper statement with your phone camera.",
   },
   {
     name: "Upload to BankRead",
-    text: "Go to your BankRead dashboard and drag-and-drop the PDF or image file, or tap 'Take Photo' on mobile to capture directly.",
+    text: "Go to your BankRead dashboard and drag-and-drop the PDF, CSV, Excel, or image file, or tap 'Take Photo' on mobile to capture directly.",
   },
   {
-    name: "AI extracts your transactions",
-    text: "BankRead's AI reads every transaction — from text-based PDFs, scanned documents, or photos — extracting dates, descriptions, amounts, and balances.",
+    name: "AI extracts and categorizes your transactions",
+    text: "BankRead's AI reads every transaction — from text-based PDFs, spreadsheets, scanned documents, or photos — extracting dates, descriptions, amounts, and balances, then categorizing each one automatically.",
   },
   {
     name: "Review the extracted data",
@@ -544,7 +544,7 @@ export default async function BlogPostPage({
       },
       {
         "@type": "HowTo",
-        name: `How to convert ${post.bankName} statements (PDF, scanned, or photo) to CSV or Excel`,
+        name: `How to convert ${post.bankName} statements (PDF, CSV, Excel, scanned, or photo) to categorized CSV or Excel`,
         description: post.description,
         step: howToSteps.map((s, i) => ({
           "@type": "HowToStep",
@@ -648,19 +648,19 @@ export default async function BlogPostPage({
               </p>
               <ol className="list-decimal pl-5 space-y-2">
                 <li>
-                  <strong>Download your statement or take a photo</strong> — Get the PDF from
-                  your {post.bankName} online banking portal (see steps below), or snap a photo
-                  of a paper statement with your phone.
+                  <strong>Download your statement, export a spreadsheet, or take a photo</strong> — Get the PDF from
+                  your {post.bankName} online banking portal (see steps below), export transactions
+                  as CSV or Excel, or snap a photo of a paper statement with your phone.
                 </li>
                 <li>
-                  <strong>Upload to BankRead</strong> — Drag and drop the PDF or image on your
+                  <strong>Upload to BankRead</strong> — Drag and drop the PDF, CSV, Excel, or image on your
                   BankRead dashboard. On mobile, tap &quot;Take Photo&quot; to capture directly
                   with your camera.
                 </li>
                 <li>
                   <strong>AI processes your statement</strong> — BankRead&apos;s
-                  AI reads every transaction from text PDFs, scanned documents,
-                  or photos — extracting dates, descriptions, and amounts automatically.
+                  AI reads every transaction from text PDFs, spreadsheets, scanned documents,
+                  or photos — extracting dates, descriptions, and amounts, then categorizing automatically.
                 </li>
                 <li>
                   <strong>Review the extracted data</strong> — Check the
@@ -774,7 +774,7 @@ export default async function BlogPostPage({
                 Ready to Convert Your {post.bankName} Statement?
               </h2>
               <p className="text-gray-600 mb-6">
-                Upload your PDF, scanned document, or photo and get clean CSV or Excel data in seconds. No
+                Upload your PDF, CSV, Excel, scanned document, or photo and get clean, categorized data in seconds. No
                 manual data entry required.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
