@@ -39,12 +39,21 @@ async def extract_text_with_docai(file_bytes: bytes, mime_type: str) -> str | No
         else:
             chunks = [file_bytes]
 
+        # OCR config: enable native PDF text layer + language hints
+        process_options = documentai.ProcessOptions(
+            ocr_config=documentai.OcrConfig(
+                enable_native_pdf_parsing=True,
+                language_code="en",
+            ),
+        )
+
         all_text_parts: list[str] = []
         for chunk in chunks:
             raw_document = documentai.RawDocument(content=chunk, mime_type=mime_type)
             request = documentai.ProcessRequest(
                 name=processor_name,
                 raw_document=raw_document,
+                process_options=process_options,
             )
             result = await client.process_document(request=request)
             part = _format_document(result.document)

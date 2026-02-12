@@ -193,6 +193,9 @@ async def _process_image(
             img_path = tmp_path
             docai_mime = "image/jpeg" if ext in (".jpg", ".jpeg") else "image/png"
 
+        # Enhance image for better OCR (grayscale + contrast boost)
+        optimize_image(img_path)
+
         # Try Document AI first
         with open(img_path, "rb") as f:
             img_bytes = f.read()
@@ -209,9 +212,7 @@ async def _process_image(
             effective_pages = 1
             processing_type = "ocr"
         else:
-            # Fall back to Vision path
-            optimize_image(img_path)
-
+            # Fall back to Vision path (image already optimized above)
             transactions = await parse_transactions_from_images(
                 [img_path], filename, custom_categories=custom_categories
             )
