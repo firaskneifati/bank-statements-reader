@@ -41,6 +41,13 @@ export default function SignUpPage() {
         return;
       }
 
+      // Fire Google Ads sign-up conversion
+      if (typeof window.gtag === "function") {
+        window.gtag("event", "conversion", {
+          send_to: "AW-751839701/EcW4CNTNpfcbENXTwOYC",
+        });
+      }
+
       // Auto sign-in after registration — let NextAuth handle redirect
       const callbackUrl = planParam && planParam !== "free"
         ? `/settings/billing?upgrade=${planParam}`
