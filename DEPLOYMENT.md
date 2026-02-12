@@ -96,7 +96,22 @@ POSTGRES_PASSWORD=<run: openssl rand -hex 32>
 POSTGRES_DB=bankstatements
 JWT_SECRET=<run: openssl rand -hex 32>
 ANTHROPIC_API_KEY=<from console.anthropic.com>
+
+# Google Document AI (optional — enables cheaper OCR for scanned PDFs/images)
+GOOGLE_DOCAI_PROJECT_ID=<your GCP project ID>
+GOOGLE_DOCAI_LOCATION=us
+GOOGLE_DOCAI_PROCESSOR_ID=<your processor ID>
+GOOGLE_APPLICATION_CREDENTIALS=/app/gcp-docai-key.json
 ```
+
+### Deploy GCP key (if using Document AI)
+
+```bash
+# Copy key file to the server
+scp gcp-docai-key.json root@<server-ip>:/root/bank-statements-reader/backend/gcp-docai-key.json
+```
+
+The key is mounted into the backend container via docker-compose.prod.yml. The `GOOGLE_APPLICATION_CREDENTIALS` path should be `/app/gcp-docai-key.json` (the container-internal path).
 
 Deploy:
 
@@ -216,5 +231,12 @@ python manage.py create-user --email user@example.com --password "securepass" --
 
 ```bash
 python manage.py usage
-# Shows per-user uploads, documents, pages, transactions, exports, and totals
+# Shows per-user uploads, documents, pages (text vs image breakdown), transactions, exports, and totals
+```
+
+**Delete a user:**
+
+```bash
+python manage.py delete-user --email user@example.com
+# Deletes user, their uploads, and their organization (if sole member)
 ```

@@ -94,8 +94,11 @@ Register an account, upload PDFs or images, view transactions, export to CSV/Exc
 | `DATABASE_URL` | — | PostgreSQL connection string |
 | `JWT_SECRET` | — | **Required.** Must match `NEXTAUTH_SECRET` |
 | `MAX_FILE_SIZE_MB` | `10` | Max upload size per file |
-| `IMAGE_PAGE_COST_MULTIPLIER` | `3.0` | Page quota multiplier for image/scanned PDFs |
-| `MAX_IMAGE_DIMENSION` | `1568` | Max image dimension (px) before resizing for Claude Vision |
+| `MAX_IMAGE_DIMENSION` | `2048` | Max image dimension (px) before resizing |
+| `GOOGLE_DOCAI_PROJECT_ID` | — | GCP project ID (optional — enables Document AI OCR) |
+| `GOOGLE_DOCAI_LOCATION` | `us` | Document AI processor region |
+| `GOOGLE_DOCAI_PROCESSOR_ID` | — | Document AI processor ID |
+| `GOOGLE_APPLICATION_CREDENTIALS` | — | Path to GCP service account JSON key |
 
 ### Frontend (`frontend/.env`)
 
@@ -115,6 +118,26 @@ Register an account, upload PDFs or images, view transactions, export to CSV/Exc
    ANTHROPIC_API_KEY=sk-ant-...
    ```
 5. Restart the backend
+
+## Setting Up Google Document AI (Optional)
+
+Document AI provides cheap, high-accuracy OCR for scanned PDFs and images ($0.0015/page). Without it, the app falls back to Claude Sonnet Vision ($0.02/page).
+
+1. Create a GCP project at [console.cloud.google.com](https://console.cloud.google.com/)
+2. Enable the **Document AI API**
+3. Create an **Enterprise Document OCR** processor in the `us` region
+4. Create a service account with the `Cloud Document AI API User` role
+5. Download the JSON key file and place it in `backend/` (e.g., `backend/gcp-docai-key.json`)
+6. Add to `backend/.env`:
+   ```
+   GOOGLE_DOCAI_PROJECT_ID=your-project-id
+   GOOGLE_DOCAI_LOCATION=us
+   GOOGLE_DOCAI_PROCESSOR_ID=your-processor-id
+   GOOGLE_APPLICATION_CREDENTIALS=gcp-docai-key.json
+   ```
+7. Restart the backend — scanned PDFs and images will now use Document AI + Haiku instead of Vision
+
+Files with OCR confidence below 95% are automatically rejected (0 transactions returned) to prevent hallucination.
 
 ## Resetting the Database
 
