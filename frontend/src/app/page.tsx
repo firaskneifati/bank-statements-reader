@@ -353,7 +353,7 @@ export default async function LandingPage() {
                   <div className="w-3 h-3 rounded-full bg-red-400" />
                   <div className="w-3 h-3 rounded-full bg-amber-400" />
                   <div className="w-3 h-3 rounded-full bg-green-400" />
-                  <span className="ml-4 text-xs text-gray-400 font-mono">bankread.ai/dashboard</span>
+                  <span className="ml-4 text-xs text-gray-500 font-mono">bankread.ai/dashboard</span>
                 </div>
                 <div className="p-6 space-y-4">
                   <div className="flex items-center gap-3">
@@ -374,7 +374,7 @@ export default async function LandingPage() {
                     </div>
                     {[
                       { date: "Jan 15", desc: "Grocery Store", cat: "Groceries", amount: "-$84.32", color: "text-red-600" },
-                      { date: "Jan 14", desc: "Salary Deposit", cat: "Income", amount: "+$3,200.00", color: "text-green-600" },
+                      { date: "Jan 14", desc: "Salary Deposit", cat: "Income", amount: "+$3,200.00", color: "text-green-700" },
                       { date: "Jan 13", desc: "Electric Company", cat: "Utilities", amount: "-$142.50", color: "text-red-600" },
                     ].map((row, i) => (
                       <div key={i} className="grid grid-cols-4 gap-px bg-gray-100">
