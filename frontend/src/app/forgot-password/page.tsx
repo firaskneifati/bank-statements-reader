@@ -136,10 +136,12 @@ export default function ForgotPasswordPage() {
               </svg>
               <span className="text-white font-semibold">BankRead</span>
             </Link>
-            <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-6 text-sm flex-wrap justify-center">
               <Link href="/#features" className="hover:text-white transition-colors">Features</Link>
               <Link href="/#pricing" className="hover:text-white transition-colors">Pricing</Link>
               <Link href="/#faq" className="hover:text-white transition-colors">FAQ</Link>
+              <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
             </div>
             <p className="text-sm">&copy; {new Date().getFullYear()} BankRead. All rights reserved.</p>
           </div>

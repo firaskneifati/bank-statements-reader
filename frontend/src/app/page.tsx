@@ -579,11 +579,13 @@ export default async function LandingPage() {
               <BankReadLogo className="h-6 w-6" />
               <span className="text-white font-semibold">BankRead</span>
             </div>
-            <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-6 text-sm flex-wrap justify-center">
               <a href="#features" className="hover:text-white transition-colors">Features</a>
               {registrationOpen && <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>}
               <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
               <a href="#contact" className="hover:text-white transition-colors">Contact</a>
+              <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
               <Link href="/sign-in" className="hover:text-white transition-colors">Sign In</Link>
             </div>
             <p className="text-sm">&copy; {new Date().getFullYear()} BankRead. All rights reserved.</p>
