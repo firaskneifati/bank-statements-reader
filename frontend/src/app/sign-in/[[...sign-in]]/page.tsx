@@ -84,7 +84,7 @@ export default function SignInPage() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Nav */}
-      <nav className="bg-white/95 backdrop-blur border-b border-gray-200">
+      <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-200" aria-label="Main navigation">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className="h-7 w-7" aria-hidden="true">
@@ -95,14 +95,45 @@ export default function SignInPage() {
             </svg>
             <span className="text-xl font-bold text-gray-900">BankRead</span>
           </Link>
-          {registrationOpen && (
-            <Link
-              href="/sign-up"
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Get Started
-            </Link>
-          )}
+
+          <div className="hidden md:flex items-center gap-8">
+            <Link href="/#features" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Features</Link>
+            <Link href="/#how-it-works" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">How It Works</Link>
+            {registrationOpen && <Link href="/#pricing" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Pricing</Link>}
+            <Link href="/#faq" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">FAQ</Link>
+            <Link href="/#contact" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">Contact</Link>
+          </div>
+
+          <div className="hidden md:flex items-center gap-3">
+            {registrationOpen && (
+              <Link
+                href="/sign-up"
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Get Started
+              </Link>
+            )}
+          </div>
+
+          <details className="md:hidden relative">
+            <summary className="list-none cursor-pointer p-2 -mr-2 text-gray-600 hover:text-gray-900">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              </svg>
+              <span className="sr-only">Open menu</span>
+            </summary>
+            <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+              <Link href="/#features" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Features</Link>
+              <Link href="/#how-it-works" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">How It Works</Link>
+              {registrationOpen && <Link href="/#pricing" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Pricing</Link>}
+              <Link href="/#faq" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">FAQ</Link>
+              <Link href="/#contact" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Contact</Link>
+              <hr className="my-2 border-gray-100" />
+              {registrationOpen && (
+                <Link href="/sign-up" className="block px-4 py-2 text-sm font-medium text-blue-600">Get Started</Link>
+              )}
+            </div>
+          </details>
         </div>
       </nav>
 
