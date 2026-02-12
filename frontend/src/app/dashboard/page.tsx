@@ -409,9 +409,9 @@ export default function Home() {
                   const hasImageProcessing = visibleStatements.some((s) => s!.processing_type === "image");
                   return (
                     <span>
-                      {totalPages} page{totalPages !== 1 ? "s" : ""} used
+                      {totalPages} credit{totalPages !== 1 ? "s" : ""} used
                       {hasImageProcessing && (
-                        <span className="text-amber-600" title="Scanned/image pages use 3x page credits"> (includes 3x for scanned pages)</span>
+                        <span className="text-amber-600" title="Scanned/image pages use 3 credits per page"> (includes 3x for scanned pages)</span>
                       )}
                     </span>
                   );

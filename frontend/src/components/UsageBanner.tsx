@@ -92,7 +92,7 @@ export function UsageBanner({ usage, loading }: UsageBannerProps) {
               </>
             ) : (
               <>
-                {formatNumber(Math.max(0, pagesLimit - pagesUsed))} pages remaining
+                {formatNumber(Math.max(0, pagesLimit - pagesUsed))} credits remaining
                 {showUpgrade && isNearLimit && (
                   <>
                     {" "}
@@ -121,11 +121,11 @@ export function UsageBanner({ usage, loading }: UsageBannerProps) {
           <div className="space-y-1">
             <p>
               <span className="font-medium text-gray-700">This month:</span>{" "}
-              {formatNumber(usage.month_uploads)} uploads | {formatNumber(usage.month_documents)} docs | {formatNumber(usage.month_pages)} pages | {formatNumber(usage.month_transactions)} transactions
+              {formatNumber(usage.month_uploads)} uploads | {formatNumber(usage.month_documents)} docs | {formatNumber(usage.month_pages)} credits | {formatNumber(usage.month_transactions)} transactions
             </p>
             <p>
               <span className="font-medium text-gray-700">All time:</span>{" "}
-              {formatNumber(usage.total_uploads)} uploads | {formatNumber(usage.total_documents)} docs | {formatNumber(usage.total_pages)} pages | {formatNumber(usage.total_transactions)} transactions | {formatNumber(usage.total_exports)} exports
+              {formatNumber(usage.total_uploads)} uploads | {formatNumber(usage.total_documents)} docs | {formatNumber(usage.total_pages)} credits | {formatNumber(usage.total_transactions)} transactions | {formatNumber(usage.total_exports)} exports
             </p>
           </div>
         </div>
