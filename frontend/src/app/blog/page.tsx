@@ -3,23 +3,23 @@ import Link from "next/link";
 import { blogPosts } from "@/lib/blog";
 
 export const metadata: Metadata = {
-  title: "Blog — Bank Statement Parsing Guides",
+  title: "Blog — Bank Statement Parsing Guides | PDF, Scanned & Photos",
   description:
-    "Learn how to convert PDF bank statements from TD, RBC, BMO, Scotiabank, CIBC, Chase, Bank of America, and Wells Fargo to CSV or Excel.",
+    "Learn how to convert PDF bank statements, scanned documents, and photos from TD, RBC, BMO, Scotiabank, CIBC, Chase, Bank of America, and Wells Fargo to CSV or Excel.",
   alternates: { canonical: "https://bankread.ai/blog" },
   openGraph: {
-    title: "BankRead Blog — Bank Statement Parsing Guides",
+    title: "BankRead Blog — Bank Statement Parsing Guides | PDF, Scanned & Photos",
     description:
-      "Step-by-step guides for converting bank statement PDFs to CSV and Excel. Covers TD, RBC, BMO, Scotiabank, CIBC, Chase, Bank of America, and Wells Fargo.",
+      "Step-by-step guides for converting bank statement PDFs, scanned documents, and photos to CSV and Excel. Covers TD, RBC, BMO, Scotiabank, CIBC, Chase, Bank of America, and Wells Fargo.",
     url: "https://bankread.ai/blog",
     siteName: "BankRead",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "BankRead Blog — Bank Statement Parsing Guides",
+    title: "BankRead Blog — Bank Statement Parsing Guides | PDF, Scanned & Photos",
     description:
-      "Step-by-step guides for converting bank statement PDFs to CSV and Excel.",
+      "Step-by-step guides for converting bank statement PDFs, scanned documents, and photos to CSV and Excel.",
   },
 };
 
@@ -47,7 +47,7 @@ export default function BlogIndexPage() {
           Blog
         </h1>
         <p className="text-lg text-gray-600 mb-10">
-          Guides for converting bank statement PDFs to CSV and Excel.
+          Guides for converting bank statement PDFs, scanned documents, and photos to CSV and Excel.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

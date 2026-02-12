@@ -86,7 +86,7 @@ const bankContent: Record<string, BankContent> = {
       "TD business account statements may include a cheque image section — BankRead skips images and extracts only the transaction table.",
     ],
     commonIssues: [
-      "TD eStatements older than 2015 may use a scanned image format rather than selectable text. BankRead's AI handles both, but text-based PDFs are faster to process.",
+      "TD eStatements older than 2015 may use a scanned image format rather than selectable text. BankRead automatically detects scanned PDFs and processes them using AI vision — no extra steps needed.",
       "Some TD statements include a 'Daily Balance Summary' section at the end — this is separate from the transaction list and won't create duplicate entries.",
       "TD USD accounts generate statements in US dollars. BankRead extracts the values as-is; currency conversion is not applied.",
     ],
@@ -138,7 +138,7 @@ const bankContent: Record<string, BankContent> = {
     commonIssues: [
       "RBC's landscape PDF layout sometimes causes issues when printing — if you re-save the PDF, make sure to keep the original orientation for best results.",
       "Some RBC business accounts use a different statement template with additional columns for reference numbers. BankRead handles both personal and business templates.",
-      "RBC eStatements prior to 2012 may be in image-only PDF format. These take slightly longer to process but are still supported.",
+      "RBC eStatements prior to 2012 may be in image-only PDF format. BankRead automatically detects these and processes them with AI vision. You can also take a photo of a paper RBC statement and upload it directly.",
     ],
     faqs: [
       {
@@ -187,7 +187,7 @@ const bankContent: Record<string, BankContent> = {
     ],
     commonIssues: [
       "BMO statements sometimes include an 'Interest Summary' or 'Fee Summary' section at the end. These are extracted as individual line items, not duplicated.",
-      "Older BMO statements (pre-2013) may use a different font and layout. BankRead handles legacy formats but text-based PDFs yield the best results.",
+      "Older BMO statements (pre-2013) may use a scanned image format. BankRead automatically detects scanned PDFs and processes them with AI vision. You can also upload photos of paper BMO statements.",
       "BMO's combined statements (multiple accounts in one PDF) are supported — all accounts' transactions are extracted together.",
     ],
     faqs: [
@@ -288,7 +288,7 @@ const bankContent: Record<string, BankContent> = {
     commonIssues: [
       "CIBC statements may include a 'Service Charges Summary' section at the end. These charges also appear as individual transactions in the main table, so there's no duplication in the extraction.",
       "CIBC's 'Smart Account' statements include the monthly fee and rebate as separate line items — both are extracted.",
-      "Older CIBC statements (pre-2014) may use a slightly different layout. BankRead supports both legacy and current formats.",
+      "Older CIBC statements (pre-2014) may use a scanned image format. BankRead auto-detects these and processes them with AI vision. You can also snap a photo of a paper CIBC statement with your phone.",
     ],
     faqs: [
       {
@@ -464,16 +464,16 @@ const bankContent: Record<string, BankContent> = {
 
 const howToSteps = [
   {
-    name: "Download your bank statement PDF",
-    text: "Log in to your online banking portal and download the PDF statement for the period you need.",
+    name: "Download your bank statement PDF or take a photo",
+    text: "Log in to your online banking portal and download the PDF statement, or take a photo of a paper statement with your phone camera.",
   },
   {
-    name: "Upload the PDF to BankRead",
-    text: "Go to your BankRead dashboard and drag-and-drop (or click to upload) the PDF file.",
+    name: "Upload to BankRead",
+    text: "Go to your BankRead dashboard and drag-and-drop the PDF or image file, or tap 'Take Photo' on mobile to capture directly.",
   },
   {
     name: "AI extracts your transactions",
-    text: "BankRead's AI reads every transaction on the statement, extracting dates, descriptions, amounts, and balances.",
+    text: "BankRead's AI reads every transaction — from text-based PDFs, scanned documents, or photos — extracting dates, descriptions, amounts, and balances.",
   },
   {
     name: "Review the extracted data",
@@ -625,17 +625,19 @@ export default async function BlogPostPage({
               </p>
               <ol className="list-decimal pl-5 space-y-2">
                 <li>
-                  <strong>Download your statement</strong> — Get the PDF from
-                  your {post.bankName} online banking portal (see steps below).
+                  <strong>Download your statement or take a photo</strong> — Get the PDF from
+                  your {post.bankName} online banking portal (see steps below), or snap a photo
+                  of a paper statement with your phone.
                 </li>
                 <li>
-                  <strong>Upload to BankRead</strong> — Drag and drop (or click
-                  to upload) the PDF on your BankRead dashboard.
+                  <strong>Upload to BankRead</strong> — Drag and drop the PDF or image on your
+                  BankRead dashboard. On mobile, tap &quot;Take Photo&quot; to capture directly
+                  with your camera.
                 </li>
                 <li>
                   <strong>AI processes your statement</strong> — BankRead&apos;s
-                  AI reads every transaction, extracting dates, descriptions,
-                  and amounts automatically.
+                  AI reads every transaction from text PDFs, scanned documents,
+                  or photos — extracting dates, descriptions, and amounts automatically.
                 </li>
                 <li>
                   <strong>Review the extracted data</strong> — Check the
@@ -749,7 +751,7 @@ export default async function BlogPostPage({
                 Ready to Convert Your {post.bankName} Statement?
               </h2>
               <p className="text-gray-600 mb-6">
-                Upload your PDF and get clean CSV or Excel data in seconds. No
+                Upload your PDF, scanned document, or photo and get clean CSV or Excel data in seconds. No
                 manual data entry required.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
