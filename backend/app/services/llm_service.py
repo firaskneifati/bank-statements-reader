@@ -12,7 +12,7 @@ PARSE_PROMPT_TEMPLATE = """You are a bank statement parser. Extract all transact
 Return a JSON array of transactions. Each transaction should have:
 - "date": string in YYYY-MM-DD format (the transaction date)
 - "posting_date": string in YYYY-MM-DD format or null (the posting date, if available — credit card statements often show both a transaction date and a posting date)
-- "description": string (merchant/payee name, cleaned up)
+- "description": string (the full transaction description exactly as shown, including any reference numbers, confirmation codes, or IDs — do NOT remove numbers)
 - "amount": number (always positive, never negative)
 - "type": "debit" or "credit" — determined by the sign or context:
   - For chequing/savings: withdrawals = "debit", deposits = "credit"
@@ -69,7 +69,7 @@ VISION_PROMPT_TEMPLATE = """You are a bank statement parser. Carefully read all 
 Return a JSON array of transactions. Each transaction should have:
 - "date": string in YYYY-MM-DD format (the transaction date)
 - "posting_date": string in YYYY-MM-DD format or null (the posting date, if available — credit card statements often show both a transaction date and a posting date)
-- "description": string (merchant/payee name, cleaned up)
+- "description": string (the full transaction description exactly as shown, including any reference numbers, confirmation codes, or IDs — do NOT remove numbers)
 - "amount": number (always positive, never negative)
 - "type": "debit" or "credit" — pay close attention to the sign of each amount:
   - For chequing/savings: withdrawals = "debit", deposits = "credit"
