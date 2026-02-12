@@ -55,6 +55,10 @@ services:
       FRONTEND_URL: ${FRONTEND_URL}
       REGISTRATION_OPEN: ${REGISTRATION_OPEN:-false}
       AUDIT_LOG_ENABLED: ${AUDIT_LOG_ENABLED:-true}
+      GOOGLE_DOCAI_PROJECT_ID: ${GOOGLE_DOCAI_PROJECT_ID:-}
+      GOOGLE_DOCAI_LOCATION: ${GOOGLE_DOCAI_LOCATION:-us}
+      GOOGLE_DOCAI_PROCESSOR_ID: ${GOOGLE_DOCAI_PROCESSOR_ID:-}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     depends_on:
       postgres:
