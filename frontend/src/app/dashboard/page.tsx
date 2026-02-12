@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { FileUploader } from "@/components/FileUploader";
 import { CategoryManager } from "@/components/CategoryManager";
 import { TransactionTable } from "@/components/TransactionTable";
+import { CategorySummary } from "@/components/CategorySummary";
 import { ExportButtons } from "@/components/ExportButtons";
 import { UsageBanner } from "@/components/UsageBanner";
 import { UploadProgress, UploadProgressData } from "@/components/UploadProgress";
@@ -236,6 +237,24 @@ export default function Home() {
     setSelectedStatement(null);
   };
 
+  const handleCategoryChange = (stmtIndex: number, txIndex: number, newCategory: string) => {
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        statements: prev.statements.map((s, si) => {
+          if (si !== stmtIndex) return s;
+          return {
+            ...s,
+            transactions: s.transactions.map((t, ti) =>
+              ti === txIndex ? { ...t, category: newCategory } : t
+            ),
+          };
+        }),
+      };
+    });
+  };
+
   const visibleStatements = selectedStatement !== null
     ? [data?.statements[selectedStatement]].filter(Boolean)
     : data?.statements ?? [];
@@ -248,8 +267,17 @@ export default function Home() {
     }
   }
   const colorMap = colorAssignments.current;
-  const filteredTransactions = visibleStatements.flatMap((s) =>
-    s!.transactions.map((t) => ({ ...t, source: s!.filename, sourceColor: colorMap[s!.filename] }))
+  const statementsWithIndices = selectedStatement !== null
+    ? [{ stmt: data?.statements[selectedStatement], stmtIdx: selectedStatement }]
+    : (data?.statements ?? []).map((stmt, i) => ({ stmt, stmtIdx: i }));
+  const filteredTransactions = statementsWithIndices.flatMap(({ stmt, stmtIdx }) =>
+    stmt!.transactions.map((t, txIdx) => ({
+      ...t,
+      source: stmt!.filename,
+      sourceColor: colorMap[stmt!.filename],
+      _stmtIndex: stmtIdx,
+      _txIndex: txIdx,
+    }))
   );
   const totalDebits = visibleStatements.reduce((sum, s) => sum + s!.total_debits, 0);
   const totalCredits = visibleStatements.reduce((sum, s) => sum + s!.total_credits, 0);
@@ -415,7 +443,13 @@ export default function Home() {
             />
           )}
 
-          <TransactionTable transactions={filteredTransactions} />
+          <CategoryManager categories={categories} onChange={handleCategoriesChange} />
+          <TransactionTable
+            transactions={filteredTransactions}
+            categories={categories.map((c) => c.name)}
+            onCategoryChange={handleCategoryChange}
+          />
+          <CategorySummary transactions={filteredTransactions} />
         </>
       )}
     </main>

@@ -13,8 +13,10 @@ Return a JSON array of transactions. Each transaction should have:
 - "date": string in YYYY-MM-DD format (the transaction date)
 - "posting_date": string in YYYY-MM-DD format or null (the posting date, if available — credit card statements often show both a transaction date and a posting date)
 - "description": string (merchant/payee name, cleaned up)
-- "amount": number (always positive)
-- "type": "debit" or "credit"
+- "amount": number (always positive, never negative)
+- "type": "debit" or "credit" — determined by the sign or context:
+  - For chequing/savings: withdrawals = "debit", deposits = "credit"
+  - For credit cards: purchases/charges (positive amounts) = "debit", payments/refunds/credits (negative amounts, amounts with a minus sign, or marked CR) = "credit"
 - "balance": number or null (running balance if available)
 - "category": string — classify each transaction into exactly one of these categories:
 {categories}
@@ -68,8 +70,10 @@ Return a JSON array of transactions. Each transaction should have:
 - "date": string in YYYY-MM-DD format (the transaction date)
 - "posting_date": string in YYYY-MM-DD format or null (the posting date, if available — credit card statements often show both a transaction date and a posting date)
 - "description": string (merchant/payee name, cleaned up)
-- "amount": number (always positive)
-- "type": "debit" or "credit"
+- "amount": number (always positive, never negative)
+- "type": "debit" or "credit" — pay close attention to the sign of each amount:
+  - For chequing/savings: withdrawals = "debit", deposits = "credit"
+  - For credit cards: purchases/charges (positive amounts) = "debit", payments/refunds/credits (negative amounts, amounts with a minus sign, or marked CR) = "credit"
 - "balance": number or null (running balance if available)
 - "category": string — classify each transaction into exactly one of these categories:
 {categories}
@@ -77,6 +81,8 @@ Return a JSON array of transactions. Each transaction should have:
 Use your best judgment based on the merchant name, description, and context. For bank transfers (e.g. "Online Banking transfer"), try to infer the purpose from any additional context. If a transfer description is generic with no clues, use "Transfers".
 
 For credit card statements: "date" is the transaction date (when the purchase was made) and "posting_date" is the posting date (when it appeared on the account). If only one date is shown, use it as "date" and set "posting_date" to null.
+
+IMPORTANT: Look carefully at each amount's sign. A minus sign (-) or "CR" prefix/suffix means the transaction is a "credit" (payment or refund), NOT a "debit".
 
 Return ONLY the JSON array, no other text."""
 
@@ -191,7 +197,7 @@ async def _parse_with_claude_vision(
     for attempt in range(max_retries):
         try:
             message = await client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model="claude-sonnet-4-5-20250929",
                 max_tokens=16384,
                 messages=[{"role": "user", "content": content}],
             )

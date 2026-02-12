@@ -25,9 +25,11 @@ function formatCurrency(value: number | null): string {
 
 interface TransactionTableProps {
   transactions: Transaction[];
+  categories?: string[];
+  onCategoryChange?: (stmtIndex: number, txIndex: number, newCategory: string) => void;
 }
 
-export function TransactionTable({ transactions }: TransactionTableProps) {
+export function TransactionTable({ transactions, categories, onCategoryChange }: TransactionTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const hasPostingDates = transactions.some((t) => t.posting_date);
@@ -89,11 +91,33 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
       }),
       columnHelper.accessor("category", {
         header: "Category",
-        cell: (info) => (
-          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-            {info.getValue()}
-          </span>
-        ),
+        cell: (info) => {
+          const current = info.getValue();
+          if (categories && onCategoryChange) {
+            const orig = info.row.original as unknown as Record<string, unknown>;
+            const stmtIdx = orig._stmtIndex as number;
+            const txIdx = orig._txIndex as number;
+            return (
+              <select
+                value={current}
+                onChange={(e) => onCategoryChange(stmtIdx, txIdx, e.target.value)}
+                className="appearance-none bg-blue-100 text-blue-800 px-2 py-0.5 pr-5 rounded-full text-xs font-medium cursor-pointer hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%226%22%3E%3Cpath%20d%3D%22M0%200l5%206%205-6z%22%20fill%3D%22%231e40af%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_6px] bg-[right_6px_center] bg-no-repeat"
+              >
+                {[...categories].sort((a, b) => a.localeCompare(b)).map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+                {!categories.includes(current) && (
+                  <option value={current}>{current}</option>
+                )}
+              </select>
+            );
+          }
+          return (
+            <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              {current}
+            </span>
+          );
+        },
       }),
       ...(hasSources
         ? [
@@ -122,7 +146,7 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
           ]
         : []),
     ],
-    [hasPostingDates, hasSources]
+    [hasPostingDates, hasSources, categories, onCategoryChange]
   );
 
   const table = useReactTable({

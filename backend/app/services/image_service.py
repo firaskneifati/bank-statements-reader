@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 
 import fitz  # PyMuPDF
-from PIL import Image
+from PIL import Image, ImageEnhance
 
 from app.config import settings
 
@@ -91,7 +91,7 @@ def convert_heic_to_jpeg(path: str) -> str:
 
 
 def optimize_image(path: str, max_dim: int | None = None) -> str:
-    """Resize image if larger than max_dim. Modifies in place, returns same path."""
+    """Resize, convert to grayscale, and enhance contrast for better OCR. Modifies in place."""
     if max_dim is None:
         max_dim = settings.max_image_dimension
 
@@ -101,7 +101,13 @@ def optimize_image(path: str, max_dim: int | None = None) -> str:
         ratio = min(max_dim / w, max_dim / h)
         new_size = (int(w * ratio), int(h * ratio))
         img = img.resize(new_size, Image.LANCZOS)
-        img.save(path)
+
+    # Convert to grayscale and boost contrast for cleaner text recognition
+    img = img.convert("L")
+    img = ImageEnhance.Contrast(img).enhance(1.5)
+    img = img.convert("RGB")
+
+    img.save(path)
     img.close()
     return path
 
