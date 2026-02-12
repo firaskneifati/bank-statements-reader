@@ -29,7 +29,8 @@ class Organization(SQLModel, table=True):
     # Lifetime totals
     total_uploads: int = Field(default=0)
     total_documents: int = Field(default=0)
-    total_pages: int = Field(default=0)
+    total_pages: int = Field(default=0)          # credits (with multiplier)
+    total_actual_pages: int = Field(default=0)   # real document pages
     total_transactions: int = Field(default=0)
     total_exports: int = Field(default=0)
     total_bytes_processed: int = Field(default=0)
@@ -40,7 +41,8 @@ class Organization(SQLModel, table=True):
     # Current billing period (reset monthly)
     month_uploads: int = Field(default=0)
     month_documents: int = Field(default=0)
-    month_pages: int = Field(default=0)
+    month_pages: int = Field(default=0)          # credits (with multiplier)
+    month_actual_pages: int = Field(default=0)   # real document pages
     month_transactions: int = Field(default=0)
     month_exports: int = Field(default=0)
     month_bytes_processed: int = Field(default=0)

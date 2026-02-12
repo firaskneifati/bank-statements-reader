@@ -250,12 +250,14 @@ def _usage_from_org(org: Organization) -> UsageStats:
         total_uploads=org.total_uploads,
         total_documents=org.total_documents,
         total_pages=org.total_pages,
+        total_actual_pages=org.total_actual_pages,
         total_transactions=org.total_transactions,
         total_exports=org.total_exports,
         total_bytes_processed=org.total_bytes_processed,
         month_uploads=org.month_uploads,
         month_documents=org.month_documents,
         month_pages=org.month_pages,
+        month_actual_pages=org.month_actual_pages,
         month_transactions=org.month_transactions,
         month_exports=org.month_exports,
         month_bytes_processed=org.month_bytes_processed,
@@ -299,6 +301,7 @@ async def upload_statements(
     statements = [r[0] for r in results]
     total_bytes = sum(r[1] for r in results)
     total_pages = sum(s.page_count for s in statements)
+    total_actual_pages = sum(s.actual_pages for s in statements)
 
     # Enforce monthly page limit (post-check: reject if this upload would exceed the limit)
     if org and org.page_limit is not None and org.month_pages + total_pages > org.page_limit:
@@ -329,11 +332,13 @@ async def upload_statements(
             org.total_uploads += 1
             org.total_documents += doc_count
             org.total_pages += total_pages
+            org.total_actual_pages += total_actual_pages
             org.total_transactions += total_txns
             org.total_bytes_processed += total_bytes
             org.month_uploads += 1
             org.month_documents += doc_count
             org.month_pages += total_pages
+            org.month_actual_pages += total_actual_pages
             org.month_transactions += total_txns
             org.month_bytes_processed += total_bytes
             session.add(org)

@@ -26,12 +26,14 @@ class UsageStats(BaseModel):
     total_uploads: int
     total_documents: int
     total_pages: int
+    total_actual_pages: int = 0
     total_transactions: int
     total_exports: int
     total_bytes_processed: int
     month_uploads: int
     month_documents: int
     month_pages: int
+    month_actual_pages: int = 0
     month_transactions: int
     month_exports: int
     month_bytes_processed: int
