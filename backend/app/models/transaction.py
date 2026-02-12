@@ -18,6 +18,7 @@ class StatementResult(BaseModel):
     total_credits: float
     transaction_count: int
     page_count: int = 0
+    processing_type: str = "text"
 
 
 class UsageStats(BaseModel):

@@ -62,6 +62,25 @@ def _build_category_block(custom_categories: list[dict] | None) -> str:
   - "Other" — only if none of the above fit"""
 
 
+VISION_PROMPT_TEMPLATE = """You are a bank statement parser. Carefully read all visible text in the images and extract all transactions.
+
+Return a JSON array of transactions. Each transaction should have:
+- "date": string in YYYY-MM-DD format (the transaction date)
+- "posting_date": string in YYYY-MM-DD format or null (the posting date, if available — credit card statements often show both a transaction date and a posting date)
+- "description": string (merchant/payee name, cleaned up)
+- "amount": number (always positive)
+- "type": "debit" or "credit"
+- "balance": number or null (running balance if available)
+- "category": string — classify each transaction into exactly one of these categories:
+{categories}
+
+Use your best judgment based on the merchant name, description, and context. For bank transfers (e.g. "Online Banking transfer"), try to infer the purpose from any additional context. If a transfer description is generic with no clues, use "Transfers".
+
+For credit card statements: "date" is the transaction date (when the purchase was made) and "posting_date" is the posting date (when it appeared on the account). If only one date is shown, use it as "date" and set "posting_date" to null.
+
+Return ONLY the JSON array, no other text."""
+
+
 async def parse_transactions(
     text: str,
     filename: str,
@@ -71,6 +90,18 @@ async def parse_transactions(
         return await generate_mock_transactions(filename, custom_categories=custom_categories)
 
     return await _parse_with_claude(text, custom_categories=custom_categories)
+
+
+async def parse_transactions_from_images(
+    image_paths: list[str],
+    filename: str,
+    custom_categories: list[dict] | None = None,
+) -> list[Transaction]:
+    """Parse transactions from images using Claude Vision API."""
+    if settings.mock_mode:
+        return await generate_mock_transactions(filename, custom_categories=custom_categories)
+
+    return await _parse_with_claude_vision(image_paths, custom_categories=custom_categories)
 
 
 async def _parse_with_claude(
@@ -112,6 +143,68 @@ async def _parse_with_claude(
         rest = response_text[start:]
         end_idx = rest.find("```")
         response_text = rest[:end_idx].strip() if end_idx != -1 else rest.strip()
+
+    data = json.loads(response_text)
+    return [Transaction(**t) for t in data]
+
+
+def _extract_json(response_text: str) -> str:
+    """Extract JSON from a Claude response, handling markdown code blocks."""
+    if "```" in response_text:
+        start = response_text.index("```") + 3
+        if response_text[start:].startswith("json"):
+            start += 4
+        rest = response_text[start:]
+        end_idx = rest.find("```")
+        return rest[:end_idx].strip() if end_idx != -1 else rest.strip()
+    return response_text
+
+
+async def _parse_with_claude_vision(
+    image_paths: list[str],
+    custom_categories: list[dict] | None = None,
+) -> list[Transaction]:
+    import anthropic
+
+    from app.services.image_service import image_to_base64
+
+    category_block = _build_category_block(custom_categories)
+    prompt = VISION_PROMPT_TEMPLATE.format(categories=category_block)
+
+    # Build content blocks: text prompt + image blocks
+    content: list[dict] = []
+    for path in image_paths:
+        b64_data, media_type = image_to_base64(path)
+        content.append({
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": media_type,
+                "data": b64_data,
+            },
+        })
+    content.append({"type": "text", "text": prompt})
+
+    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            message = await client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=16384,
+                messages=[{"role": "user", "content": content}],
+            )
+            break
+        except anthropic.RateLimitError:
+            if attempt == max_retries - 1:
+                raise
+            wait = 2 ** attempt * 15
+            logger.warning(f"Rate limited, waiting {wait}s (attempt {attempt + 1}/{max_retries})")
+            await asyncio.sleep(wait)
+
+    response_text = message.content[0].text
+    response_text = _extract_json(response_text)
 
     data = json.loads(response_text)
     return [Transaction(**t) for t in data]

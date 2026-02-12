@@ -1,15 +1,25 @@
-import asyncio
 import json
 import logging
+import math
 import os
 import tempfile
+from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.transaction import StatementResult, UploadResponse, UsageStats
 from app.services.pdf_service import extract_text_from_pdf
-from app.services.llm_service import parse_transactions
+from app.services.llm_service import parse_transactions, parse_transactions_from_images
+from app.services.image_service import (
+    SUPPORTED_IMAGE_EXTENSIONS,
+    is_scanned_pdf,
+    pdf_page_count,
+    pdf_pages_to_images,
+    convert_heic_to_jpeg,
+    optimize_image,
+    validate_image,
+)
 from app.services.categorization_service import categorize_transactions
 from app.auth.dependencies import CurrentUser
 from app.limiter import limiter
@@ -21,32 +31,64 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+ALLOWED_EXTENSIONS = {".pdf"} | SUPPORTED_IMAGE_EXTENSIONS
+
+
+def _get_extension(filename: str) -> str:
+    return Path(filename).suffix.lower()
+
+
+def _validate_file(contents: bytes, filename: str) -> None:
+    """Validate file type by extension and magic bytes."""
+    ext = _get_extension(filename)
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File '{filename}' has unsupported format. Accepted: PDF, JPEG, PNG, HEIC",
+        )
+
+    if len(contents) > settings.max_file_size_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File '{filename}' exceeds {settings.max_file_size_mb}MB limit",
+        )
+
+    if ext == ".pdf":
+        if not contents[:5].startswith(b"%PDF-"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"File '{filename}' is not a valid PDF",
+            )
+    else:
+        validate_image(contents, filename)
+
 
 async def _process_single_file(
     file: UploadFile,
     custom_categories: list[dict] | None = None,
 ) -> tuple[StatementResult, int]:
-    """Process a single PDF. Returns (result, bytes_processed)."""
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(
-            status_code=400,
-            detail=f"File '{file.filename}' is not a PDF",
-        )
-
+    """Process a single file (PDF or image). Returns (result, bytes_processed)."""
     contents = await file.read()
     bytes_processed = len(contents)
+    filename = file.filename or "unknown"
 
-    if not contents[:5].startswith(b"%PDF-"):
-        raise HTTPException(
-            status_code=400,
-            detail=f"File '{file.filename}' is not a valid PDF",
-        )
+    _validate_file(contents, filename)
 
-    if bytes_processed > settings.max_file_size_bytes:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File '{file.filename}' exceeds {settings.max_file_size_mb}MB limit",
-        )
+    ext = _get_extension(filename)
+
+    if ext == ".pdf":
+        return await _process_pdf(contents, filename, custom_categories)
+    else:
+        return await _process_image(contents, filename, custom_categories)
+
+
+async def _process_pdf(
+    contents: bytes,
+    filename: str,
+    custom_categories: list[dict] | None,
+) -> tuple[StatementResult, int]:
+    """Process a PDF — text-based or scanned."""
+    bytes_processed = len(contents)
 
     with tempfile.NamedTemporaryFile(
         suffix=".pdf", dir=settings.upload_dir, delete=False
@@ -54,34 +96,113 @@ async def _process_single_file(
         tmp.write(contents)
         tmp_path = tmp.name
 
+    temp_images: list[str] = []
     try:
         text, page_count = extract_text_from_pdf(tmp_path)
-        if not text.strip():
-            raise HTTPException(
-                status_code=422,
-                detail=f"Could not extract text from '{file.filename}'. The PDF may be scanned/image-based.",
-            )
 
-        transactions = await parse_transactions(text, file.filename or "unknown.pdf", custom_categories=custom_categories)
-        # In mock mode, use keyword categorization as fallback
-        # In real mode, Claude already categorizes during parsing
-        if settings.mock_mode:
-            transactions = categorize_transactions(transactions)
+        if text.strip() and not is_scanned_pdf(tmp_path):
+            # --- Text PDF path ---
+            transactions = await parse_transactions(
+                text, filename, custom_categories=custom_categories
+            )
+            if settings.mock_mode:
+                transactions = categorize_transactions(transactions)
+
+            effective_pages = page_count
+            processing_type = "text"
+        else:
+            # --- Scanned PDF path ---
+            logger.info(f"Scanned PDF detected: '{filename}', converting {page_count} pages to images")
+            page_count = pdf_page_count(tmp_path)
+            temp_images = pdf_pages_to_images(tmp_path)
+            for img_path in temp_images:
+                optimize_image(img_path)
+
+            transactions = await parse_transactions_from_images(
+                temp_images, filename, custom_categories=custom_categories
+            )
+            if settings.mock_mode:
+                transactions = categorize_transactions(transactions)
+
+            effective_pages = math.ceil(page_count * settings.image_page_cost_multiplier)
+            processing_type = "image"
 
         total_debits = sum(t.amount for t in transactions if t.type == "debit")
         total_credits = sum(t.amount for t in transactions if t.type == "credit")
 
         result = StatementResult(
-            filename=file.filename or "unknown.pdf",
+            filename=filename,
             transactions=transactions,
             total_debits=round(total_debits, 2),
             total_credits=round(total_credits, 2),
             transaction_count=len(transactions),
-            page_count=page_count,
+            page_count=effective_pages,
+            processing_type=processing_type,
         )
         return (result, bytes_processed)
     finally:
         os.unlink(tmp_path)
+        for img_path in temp_images:
+            try:
+                os.unlink(img_path)
+            except OSError:
+                pass
+
+
+async def _process_image(
+    contents: bytes,
+    filename: str,
+    custom_categories: list[dict] | None,
+) -> tuple[StatementResult, int]:
+    """Process an image file (JPEG, PNG, HEIC)."""
+    bytes_processed = len(contents)
+    ext = _get_extension(filename)
+
+    with tempfile.NamedTemporaryFile(
+        suffix=ext, dir=settings.upload_dir, delete=False
+    ) as tmp:
+        tmp.write(contents)
+        tmp_path = tmp.name
+
+    temp_files: list[str] = [tmp_path]
+    try:
+        # Convert HEIC to JPEG
+        if ext == ".heic":
+            jpeg_path = convert_heic_to_jpeg(tmp_path)
+            temp_files.append(jpeg_path)
+            img_path = jpeg_path
+        else:
+            img_path = tmp_path
+
+        optimize_image(img_path)
+
+        transactions = await parse_transactions_from_images(
+            [img_path], filename, custom_categories=custom_categories
+        )
+        if settings.mock_mode:
+            transactions = categorize_transactions(transactions)
+
+        effective_pages = math.ceil(1 * settings.image_page_cost_multiplier)
+
+        total_debits = sum(t.amount for t in transactions if t.type == "debit")
+        total_credits = sum(t.amount for t in transactions if t.type == "credit")
+
+        result = StatementResult(
+            filename=filename,
+            transactions=transactions,
+            total_debits=round(total_debits, 2),
+            total_credits=round(total_credits, 2),
+            transaction_count=len(transactions),
+            page_count=effective_pages,
+            processing_type="image",
+        )
+        return (result, bytes_processed)
+    finally:
+        for f in temp_files:
+            try:
+                os.unlink(f)
+            except OSError:
+                pass
 
 
 def _usage_from_org(org: Organization) -> UsageStats:

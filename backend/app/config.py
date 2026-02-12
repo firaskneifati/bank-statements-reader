@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     contact_email: str = ""
     frontend_url: str = "http://localhost:4001"
+    image_page_cost_multiplier: float = 3.0
+    max_image_dimension: int = 1568
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
