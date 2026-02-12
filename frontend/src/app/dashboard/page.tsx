@@ -373,7 +373,7 @@ export default function Home() {
                     <FileText className="h-3.5 w-3.5" />
                     {s.filename} ({s.transaction_count})
                     <span className="text-[10px] opacity-60">
-                      {s.actual_pages}p{s.processing_type === "image" ? " img" : s.processing_type === "ocr" ? " scan" : ""}{s.page_count !== s.actual_pages ? ` = ${s.page_count}cr` : ""}
+                      {s.actual_pages || s.page_count}p{s.processing_type === "image" ? " img" : s.processing_type === "ocr" ? " scan" : ""}
                     </span>
                     <span
                       role="button"
@@ -405,7 +405,6 @@ export default function Home() {
                 {visibleStatements.length} statement{visibleStatements.length !== 1 ? "s" : ""}
                 {" | "}
                 {(() => {
-                  const totalCredits_ = visibleStatements.reduce((sum, s) => sum + s!.page_count, 0);
                   const textPages = visibleStatements.filter((s) => s!.processing_type === "text").reduce((sum, s) => sum + (s!.actual_pages || s!.page_count), 0);
                   const imagePages = visibleStatements.filter((s) => s!.processing_type === "image").reduce((sum, s) => sum + (s!.actual_pages || 1), 0);
                   const ocrPages = visibleStatements.filter((s) => s!.processing_type === "ocr").reduce((sum, s) => sum + (s!.actual_pages || s!.page_count), 0);
@@ -413,12 +412,11 @@ export default function Home() {
                   if (textPages > 0) parts.push(`${textPages} text`);
                   if (ocrPages > 0) parts.push(`${ocrPages} scanned`);
                   if (imagePages > 0) parts.push(`${imagePages} image`);
+                  const total = textPages + imagePages + ocrPages;
                   return (
                     <span>
-                      {parts.length > 0 ? parts.join(" + ") + " " : ""}
-                      page{(textPages + imagePages + ocrPages) !== 1 ? "s" : ""}
-                      {" = "}
-                      {totalCredits_} credit{totalCredits_ !== 1 ? "s" : ""}
+                      {parts.length > 1 ? parts.join(" + ") + " = " : ""}
+                      {total} page{total !== 1 ? "s" : ""}
                     </span>
                   );
                 })()}

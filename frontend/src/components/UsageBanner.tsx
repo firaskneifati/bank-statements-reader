@@ -13,12 +13,12 @@ function formatNumber(n: number): string {
   return n.toLocaleString("en-CA");
 }
 
-function formatPageBreakdown(text: number, image: number, credits: number): string {
+function formatPageBreakdown(text: number, image: number, total: number): string {
   const parts: string[] = [];
   if (image > 0) parts.push(`${formatNumber(image)} image`);
   if (text > 0) parts.push(`${formatNumber(text)} text`);
-  if (parts.length > 0) return `${parts.join(" + ")} pages (${formatNumber(credits)} credits)`;
-  return `${formatNumber(credits)} credits`;
+  if (parts.length > 0) return `${parts.join(" + ")} pages`;
+  return `${formatNumber(total)} pages`;
 }
 
 export function UsageBanner({ usage, loading }: UsageBannerProps) {
@@ -100,7 +100,7 @@ export function UsageBanner({ usage, loading }: UsageBannerProps) {
               </>
             ) : (
               <>
-                {formatNumber(Math.max(0, pagesLimit - pagesUsed))} credits remaining
+                {formatNumber(Math.max(0, pagesLimit - pagesUsed))} pages remaining
                 {showUpgrade && isNearLimit && (
                   <>
                     {" "}

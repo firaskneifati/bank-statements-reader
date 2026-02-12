@@ -141,7 +141,7 @@ async def _process_pdf(
                 if settings.mock_mode:
                     transactions = categorize_transactions(transactions)
 
-                effective_pages = math.ceil(page_count * settings.image_page_cost_multiplier)
+                effective_pages = page_count
                 processing_type = "image"
 
         total_debits = sum(t.amount for t in transactions if t.type == "debit")
@@ -220,7 +220,7 @@ async def _process_image(
             if settings.mock_mode:
                 transactions = categorize_transactions(transactions)
 
-            effective_pages = math.ceil(1 * settings.image_page_cost_multiplier)
+            effective_pages = 1
             processing_type = "image"
 
         total_debits = sum(t.amount for t in transactions if t.type == "debit")
