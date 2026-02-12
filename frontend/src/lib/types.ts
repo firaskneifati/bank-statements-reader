@@ -50,6 +50,8 @@ export interface UsageStats {
   total_documents: number;
   total_pages: number;
   total_actual_pages: number;
+  total_text_pages: number;
+  total_image_pages: number;
   total_transactions: number;
   total_exports: number;
   total_bytes_processed: number;
@@ -57,6 +59,8 @@ export interface UsageStats {
   month_documents: number;
   month_pages: number;
   month_actual_pages: number;
+  month_text_pages: number;
+  month_image_pages: number;
   month_transactions: number;
   month_exports: number;
   month_bytes_processed: number;

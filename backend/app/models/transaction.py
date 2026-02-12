@@ -27,6 +27,8 @@ class UsageStats(BaseModel):
     total_documents: int
     total_pages: int
     total_actual_pages: int = 0
+    total_text_pages: int = 0
+    total_image_pages: int = 0
     total_transactions: int
     total_exports: int
     total_bytes_processed: int
@@ -34,6 +36,8 @@ class UsageStats(BaseModel):
     month_documents: int
     month_pages: int
     month_actual_pages: int = 0
+    month_text_pages: int = 0
+    month_image_pages: int = 0
     month_transactions: int
     month_exports: int
     month_bytes_processed: int

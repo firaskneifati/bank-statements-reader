@@ -13,6 +13,14 @@ function formatNumber(n: number): string {
   return n.toLocaleString("en-CA");
 }
 
+function formatPageBreakdown(text: number, image: number, credits: number): string {
+  const parts: string[] = [];
+  if (image > 0) parts.push(`${formatNumber(image)} image`);
+  if (text > 0) parts.push(`${formatNumber(text)} text`);
+  if (parts.length > 0) return `${parts.join(" + ")} pages (${formatNumber(credits)} credits)`;
+  return `${formatNumber(credits)} credits`;
+}
+
 export function UsageBanner({ usage, loading }: UsageBannerProps) {
   if (loading) {
     return (
@@ -121,11 +129,11 @@ export function UsageBanner({ usage, loading }: UsageBannerProps) {
           <div className="space-y-1">
             <p>
               <span className="font-medium text-gray-700">This month:</span>{" "}
-              {formatNumber(usage.month_uploads)} uploads | {formatNumber(usage.month_documents)} docs | {formatNumber(usage.month_actual_pages || 0)} pages ({formatNumber(usage.month_pages)} credits) | {formatNumber(usage.month_transactions)} transactions
+              {formatNumber(usage.month_uploads)} uploads | {formatNumber(usage.month_documents)} docs | {formatPageBreakdown(usage.month_text_pages || 0, usage.month_image_pages || 0, usage.month_pages)} | {formatNumber(usage.month_transactions)} transactions
             </p>
             <p>
               <span className="font-medium text-gray-700">All time:</span>{" "}
-              {formatNumber(usage.total_uploads)} uploads | {formatNumber(usage.total_documents)} docs | {formatNumber(usage.total_actual_pages || 0)} pages ({formatNumber(usage.total_pages)} credits) | {formatNumber(usage.total_transactions)} transactions | {formatNumber(usage.total_exports)} exports
+              {formatNumber(usage.total_uploads)} uploads | {formatNumber(usage.total_documents)} docs | {formatPageBreakdown(usage.total_text_pages || 0, usage.total_image_pages || 0, usage.total_pages)} | {formatNumber(usage.total_transactions)} transactions | {formatNumber(usage.total_exports)} exports
             </p>
           </div>
         </div>

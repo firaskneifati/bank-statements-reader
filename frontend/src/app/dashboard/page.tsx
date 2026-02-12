@@ -373,7 +373,7 @@ export default function Home() {
                     <FileText className="h-3.5 w-3.5" />
                     {s.filename} ({s.transaction_count})
                     <span className="text-[10px] opacity-60">
-                      {s.page_count}p
+                      {s.actual_pages}p{s.processing_type === "image" ? " img" : s.processing_type === "ocr" ? " scan" : ""}{s.page_count !== s.actual_pages ? ` = ${s.page_count}cr` : ""}
                     </span>
                     <span
                       role="button"
