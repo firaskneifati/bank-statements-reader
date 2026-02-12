@@ -1,10 +1,11 @@
 # Bank Statement Reader
 
-A SaaS app that parses PDF bank statements (chequing, savings, credit cards) into structured transactions, categorizes them with AI, and exports to CSV/Excel. Supports mock mode for development and real Claude API parsing for production.
+A SaaS app that parses bank statements (PDFs, scanned documents, and photos) into structured transactions, categorizes them with AI, and exports to CSV/Excel. Supports text-based PDFs, scanned/image-based PDFs, and direct image uploads (JPEG, PNG, HEIC).
 
 ## Features
 
 - **Multi-file upload** with drag-and-drop and concurrent processing
+- **Image & scanned PDF support** — scanned PDFs auto-detected and processed via Claude Vision API; direct image uploads (JPEG, PNG, HEIC) accepted; mobile camera capture with native flash
 - **Chequing & credit card support** with smart column display (posting date auto-detected)
 - **AI categorization** via Claude Haiku 4.5 (or mock mode without API key)
 - **Custom categories** — define your own or use 16 built-in defaults
@@ -22,7 +23,10 @@ Browser (Next.js :4001)                    FastAPI Backend (:8000)
 │  (credentials)   │                    │  2FA (TOTP setup/verify│
 │                  │                    │  JWT verification      │
 │  Drag-and-Drop   │──POST /upload──>   │  PDF → pdfplumber      │
-│  Upload Zone     │  (multipart)       │  LLM → Claude / Mock   │
+│  Upload Zone     │  (multipart)       │  Scanned → PyMuPDF →   │
+│  + Camera Capture│                    │    Claude Vision API   │
+│                  │                    │  Images → Vision API   │
+│                  │                    │  LLM → Claude / Mock   │
 │                  │                    │  Categorization        │
 │  Transaction     │<──JSON response──  │                        │
 │  Table + Export  │                    │  Export (CSV/XLSX)     │
@@ -35,7 +39,7 @@ Browser (Next.js :4001)                    FastAPI Backend (:8000)
 
 | Layer | Technologies |
 |-------|-------------|
-| **Backend** | FastAPI, Uvicorn, pdfplumber, Anthropic Claude API, openpyxl, SQLModel + asyncpg, Alembic, python-jose, passlib, pyotp |
+| **Backend** | FastAPI, Uvicorn, pdfplumber, PyMuPDF, Pillow, pillow-heif, Anthropic Claude API (text + vision), openpyxl, SQLModel + asyncpg, Alembic, python-jose, passlib, pyotp |
 | **Frontend** | Next.js 15, React 19, TypeScript, NextAuth.js v5, Tailwind CSS v4, react-dropzone, @tanstack/react-table, qrcode.react |
 | **Database** | PostgreSQL 16 (Docker) |
 | **Production** | Docker Compose + Caddy (auto-HTTPS) |
@@ -83,7 +87,7 @@ Caddy automatically provisions TLS certificates via Let's Encrypt.
 | POST | `/api/v1/auth/2fa/setup` | Bearer | Generate TOTP secret + QR URI |
 | POST | `/api/v1/auth/2fa/verify-setup` | Bearer | Verify code and enable 2FA |
 | POST | `/api/v1/auth/2fa/disable` | Bearer | Disable 2FA (requires password + code) |
-| POST | `/api/v1/upload` | Bearer | Upload PDFs for parsing |
+| POST | `/api/v1/upload` | Bearer | Upload PDFs or images for parsing |
 | POST | `/api/v1/export` | Bearer | Export transactions (CSV/XLSX) |
 
 ## Project Structure
@@ -114,11 +118,12 @@ bank-statements-reader/
 │       │   └── migrations/         # Alembic migrations
 │       ├── routers/
 │       │   ├── auth.py             # Auth + 2FA endpoints
-│       │   ├── upload.py           # PDF upload + parsing
+│       │   ├── upload.py           # PDF/image upload + parsing
 │       │   └── export.py           # CSV/Excel export
 │       └── services/
-│           ├── pdf_service.py      # pdfplumber extraction
-│           ├── llm_service.py      # Claude API / mock routing
+│           ├── pdf_service.py      # pdfplumber text extraction
+│           ├── image_service.py   # Scanned PDF detection, image conversion, optimization
+│           ├── llm_service.py      # Claude text + vision API / mock routing
 │           └── export_service.py   # File generation
 ├── frontend/
 │   ├── Dockerfile                  # Dev container
@@ -153,6 +158,7 @@ bank-statements-reader/
 - [x] Security hardening (rate limiting, headers, validation)
 - [x] Production deployment (Caddy auto-HTTPS)
 - [x] Two-factor authentication (TOTP)
+- [x] Image & scanned PDF processing (Claude Vision API)
 - [ ] Stateless privacy-by-design conversion
 - [ ] Client management
 - [ ] Server-side categories

@@ -80,7 +80,7 @@ pnpm dev --port 4001
 
 ### 4. Open http://localhost:4001
 
-Register an account, upload PDFs, view transactions, export to CSV/Excel.
+Register an account, upload PDFs or images, view transactions, export to CSV/Excel.
 
 ## Environment Variables
 
@@ -93,7 +93,9 @@ Register an account, upload PDFs, view transactions, export to CSV/Excel.
 | `ALLOWED_ORIGINS` | `http://localhost:4001` | CORS origins (comma-separated) |
 | `DATABASE_URL` | — | PostgreSQL connection string |
 | `JWT_SECRET` | — | **Required.** Must match `NEXTAUTH_SECRET` |
-| `MAX_FILE_SIZE_MB` | `10` | Max upload size |
+| `MAX_FILE_SIZE_MB` | `10` | Max upload size per file |
+| `IMAGE_PAGE_COST_MULTIPLIER` | `3.0` | Page quota multiplier for image/scanned PDFs |
+| `MAX_IMAGE_DIMENSION` | `1568` | Max image dimension (px) before resizing for Claude Vision |
 
 ### Frontend (`frontend/.env`)
 
