@@ -372,6 +372,9 @@ export default function Home() {
                   >
                     <FileText className="h-3.5 w-3.5" />
                     {s.filename} ({s.transaction_count})
+                    <span className="text-[10px] opacity-60">
+                      {s.page_count}p
+                    </span>
                     <span
                       role="button"
                       onClick={(e) => {
@@ -400,6 +403,19 @@ export default function Home() {
               </h2>
               <p className="text-sm text-gray-500">
                 {visibleStatements.length} statement{visibleStatements.length !== 1 ? "s" : ""}
+                {" | "}
+                {(() => {
+                  const totalPages = visibleStatements.reduce((sum, s) => sum + s!.page_count, 0);
+                  const hasImageProcessing = visibleStatements.some((s) => s!.processing_type === "image");
+                  return (
+                    <span>
+                      {totalPages} page{totalPages !== 1 ? "s" : ""} used
+                      {hasImageProcessing && (
+                        <span className="text-amber-600" title="Scanned/image pages use 3x page credits"> (includes 3x for scanned pages)</span>
+                      )}
+                    </span>
+                  );
+                })()}
                 {" | "}
                 <span className="text-green-700">
                   Credits: ${totalCredits.toLocaleString("en-CA", { minimumFractionDigits: 2 })}

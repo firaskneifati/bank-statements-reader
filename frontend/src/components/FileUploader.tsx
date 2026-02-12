@@ -84,6 +84,9 @@ export function FileUploader({ onUpload, disabled }: FileUploaderProps) {
               <p className="text-gray-500 text-sm">
                 PDF or images (JPEG, PNG, HEIC) &middot; Max 10MB each
               </p>
+              <p className="text-gray-400 text-xs mt-1">
+                Scanned PDFs &amp; images use 3 pages per page
+              </p>
             </>
           )}
           {acceptedFiles.length > 0 && !disabled && (
