@@ -154,6 +154,7 @@ async def _process_pdf(
             total_credits=round(total_credits, 2),
             transaction_count=len(transactions),
             page_count=effective_pages,
+            actual_pages=page_count,
             processing_type=processing_type,
         )
         return (result, bytes_processed)
@@ -232,6 +233,7 @@ async def _process_image(
             total_credits=round(total_credits, 2),
             transaction_count=len(transactions),
             page_count=effective_pages,
+            actual_pages=1,
             processing_type=processing_type,
         )
         return (result, bytes_processed)

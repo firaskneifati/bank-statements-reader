@@ -405,14 +405,20 @@ export default function Home() {
                 {visibleStatements.length} statement{visibleStatements.length !== 1 ? "s" : ""}
                 {" | "}
                 {(() => {
-                  const totalPages = visibleStatements.reduce((sum, s) => sum + s!.page_count, 0);
-                  const hasImageProcessing = visibleStatements.some((s) => s!.processing_type === "image");
+                  const totalCredits_ = visibleStatements.reduce((sum, s) => sum + s!.page_count, 0);
+                  const textPages = visibleStatements.filter((s) => s!.processing_type === "text").reduce((sum, s) => sum + (s!.actual_pages || s!.page_count), 0);
+                  const imagePages = visibleStatements.filter((s) => s!.processing_type === "image").reduce((sum, s) => sum + (s!.actual_pages || 1), 0);
+                  const ocrPages = visibleStatements.filter((s) => s!.processing_type === "ocr").reduce((sum, s) => sum + (s!.actual_pages || s!.page_count), 0);
+                  const parts: string[] = [];
+                  if (textPages > 0) parts.push(`${textPages} text`);
+                  if (ocrPages > 0) parts.push(`${ocrPages} scanned`);
+                  if (imagePages > 0) parts.push(`${imagePages} image`);
                   return (
                     <span>
-                      {totalPages} credit{totalPages !== 1 ? "s" : ""} used
-                      {hasImageProcessing && (
-                        <span className="text-amber-600" title="Scanned/image pages use 3 credits per page"> (includes 3x for scanned pages)</span>
-                      )}
+                      {parts.length > 0 ? parts.join(" + ") + " " : ""}
+                      page{(textPages + imagePages + ocrPages) !== 1 ? "s" : ""}
+                      {" = "}
+                      {totalCredits_} credit{totalCredits_ !== 1 ? "s" : ""}
                     </span>
                   );
                 })()}

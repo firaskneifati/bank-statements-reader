@@ -41,6 +41,7 @@ export interface StatementResult {
   total_credits: number;
   transaction_count: number;
   page_count: number;
+  actual_pages: number;
   processing_type?: "text" | "image" | "ocr";
 }
 

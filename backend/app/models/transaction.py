@@ -17,7 +17,8 @@ class StatementResult(BaseModel):
     total_debits: float
     total_credits: float
     transaction_count: int
-    page_count: int = 0
+    page_count: int = 0         # credits (with multiplier)
+    actual_pages: int = 0       # real document pages
     processing_type: str = "text"
 
 
