@@ -98,6 +98,7 @@ async def _process_pdf(
         tmp_path = tmp.name
 
     temp_images: list[str] = []
+    ocr_confidence = None
     try:
         text, page_count = extract_text_from_pdf(tmp_path)
 
@@ -117,14 +118,20 @@ async def _process_pdf(
             page_count = pdf_page_count(tmp_path)
 
             # Try Document AI first (cheap OCR)
-            docai_text = await extract_text_with_docai(contents, "application/pdf")
-            if docai_text:
-                logger.info(f"Using Document AI OCR for '{filename}'")
-                transactions = await parse_transactions(
-                    docai_text, filename, custom_categories=custom_categories
-                )
-                if settings.mock_mode:
-                    transactions = categorize_transactions(transactions)
+            docai_result = await extract_text_with_docai(contents, "application/pdf")
+            if docai_result:
+                docai_text, ocr_confidence = docai_result
+                logger.info(f"Using Document AI OCR for '{filename}' (confidence: {ocr_confidence:.2%})")
+
+                if ocr_confidence < 0.97:
+                    logger.warning(f"OCR confidence {ocr_confidence:.2%} below 97% threshold for '{filename}' — rejecting")
+                    transactions = []
+                else:
+                    transactions = await parse_transactions(
+                        docai_text, filename, custom_categories=custom_categories
+                    )
+                    if settings.mock_mode:
+                        transactions = categorize_transactions(transactions)
 
                 effective_pages = page_count
                 processing_type = "ocr"
@@ -156,6 +163,7 @@ async def _process_pdf(
             page_count=effective_pages,
             actual_pages=page_count,
             processing_type=processing_type,
+            ocr_confidence=round(ocr_confidence, 4) if ocr_confidence is not None else None,
         )
         return (result, bytes_processed)
     finally:
@@ -198,17 +206,24 @@ async def _process_image(
         optimize_image(img_path)
 
         # Try Document AI first
+        ocr_confidence = None
         with open(img_path, "rb") as f:
             img_bytes = f.read()
-        docai_text = await extract_text_with_docai(img_bytes, docai_mime)
+        docai_result = await extract_text_with_docai(img_bytes, docai_mime)
 
-        if docai_text:
-            logger.info(f"Using Document AI OCR for image '{filename}'")
-            transactions = await parse_transactions(
-                docai_text, filename, custom_categories=custom_categories
-            )
-            if settings.mock_mode:
-                transactions = categorize_transactions(transactions)
+        if docai_result:
+            docai_text, ocr_confidence = docai_result
+            logger.info(f"Using Document AI OCR for image '{filename}' (confidence: {ocr_confidence:.2%})")
+
+            if ocr_confidence < 0.97:
+                logger.warning(f"OCR confidence {ocr_confidence:.2%} below 97% threshold for '{filename}' — rejecting")
+                transactions = []
+            else:
+                transactions = await parse_transactions(
+                    docai_text, filename, custom_categories=custom_categories
+                )
+                if settings.mock_mode:
+                    transactions = categorize_transactions(transactions)
 
             effective_pages = 1
             processing_type = "ocr"
@@ -235,6 +250,7 @@ async def _process_image(
             page_count=effective_pages,
             actual_pages=1,
             processing_type=processing_type,
+            ocr_confidence=round(ocr_confidence, 4) if ocr_confidence is not None else None,
         )
         return (result, bytes_processed)
     finally:

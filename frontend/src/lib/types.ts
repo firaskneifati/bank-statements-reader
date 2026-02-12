@@ -43,6 +43,7 @@ export interface StatementResult {
   page_count: number;
   actual_pages: number;
   processing_type?: "text" | "image" | "ocr";
+  ocr_confidence?: number | null;
 }
 
 export interface UsageStats {

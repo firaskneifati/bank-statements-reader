@@ -374,6 +374,7 @@ export default function Home() {
                     {s.filename} ({s.transaction_count})
                     <span className="text-[10px] opacity-60">
                       {s.actual_pages || s.page_count}p{s.processing_type === "image" ? " img" : s.processing_type === "ocr" ? " scan" : ""}
+                      {s.ocr_confidence != null && ` ${Math.round(s.ocr_confidence * 100)}%`}
                     </span>
                     <span
                       role="button"

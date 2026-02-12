@@ -20,6 +20,7 @@ class StatementResult(BaseModel):
     page_count: int = 0         # credits (with multiplier)
     actual_pages: int = 0       # real document pages
     processing_type: str = "text"
+    ocr_confidence: float | None = None  # Document AI confidence (0.0–1.0)
 
 
 class UsageStats(BaseModel):

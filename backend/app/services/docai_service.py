@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 _DOCAI_MAX_PAGES = 15
 
 
-async def extract_text_with_docai(file_bytes: bytes, mime_type: str) -> str | None:
-    """Send file to Google Document AI for OCR. Returns formatted text or None on failure."""
+async def extract_text_with_docai(file_bytes: bytes, mime_type: str) -> tuple[str, float] | None:
+    """Send file to Google Document AI for OCR. Returns (text, confidence) or None on failure."""
     if not settings.docai_enabled:
         return None
 
@@ -48,6 +48,7 @@ async def extract_text_with_docai(file_bytes: bytes, mime_type: str) -> str | No
         )
 
         all_text_parts: list[str] = []
+        all_page_confidences: list[float] = []
         for chunk in chunks:
             raw_document = documentai.RawDocument(content=chunk, mime_type=mime_type)
             request = documentai.ProcessRequest(
@@ -59,6 +60,11 @@ async def extract_text_with_docai(file_bytes: bytes, mime_type: str) -> str | No
             part = _format_document(result.document)
             if part:
                 all_text_parts.append(part)
+            # Collect per-page confidence scores
+            if result.document and result.document.pages:
+                for page in result.document.pages:
+                    if page.confidence is not None:
+                        all_page_confidences.append(page.confidence)
 
         if not all_text_parts:
             logger.warning("Document AI returned no text")
@@ -71,8 +77,9 @@ async def extract_text_with_docai(file_bytes: bytes, mime_type: str) -> str | No
             logger.warning(f"Document AI returned only {len(stripped)} chars — likely unreadable")
             return None
 
-        logger.info(f"Document AI extracted {len(combined)} chars from {len(chunks)} chunk(s)")
-        return combined
+        avg_confidence = sum(all_page_confidences) / len(all_page_confidences) if all_page_confidences else 0.0
+        logger.info(f"Document AI extracted {len(combined)} chars from {len(chunks)} chunk(s), confidence: {avg_confidence:.2%}")
+        return (combined, avg_confidence)
 
     except Exception:
         logger.exception("Document AI processing failed, falling back to Vision")
