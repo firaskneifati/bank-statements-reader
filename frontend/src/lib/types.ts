@@ -42,7 +42,7 @@ export interface StatementResult {
   transaction_count: number;
   page_count: number;
   actual_pages: number;
-  processing_type?: "text" | "image" | "ocr";
+  processing_type?: "text" | "image" | "ocr" | "spreadsheet";
   ocr_confidence?: number | null;
 }
 
@@ -66,6 +66,7 @@ export interface UsageStats {
   month_exports: number;
   month_bytes_processed: number;
   page_limit: number | null;
+  bonus_pages: number;
   plan: string;
 }
 

@@ -282,6 +282,7 @@ def _usage_from_org(org: Organization) -> UsageStats:
         month_exports=org.month_exports,
         month_bytes_processed=org.month_bytes_processed,
         page_limit=org.page_limit,
+        bonus_pages=org.bonus_pages,
         plan=org.plan,
     )
 
@@ -300,11 +301,13 @@ async def upload_statements(
 
     # Enforce monthly page limit (pre-check)
     org = await session.get(Organization, current_user.org_id)
-    if org and org.page_limit is not None and org.month_pages >= org.page_limit:
-        raise HTTPException(
-            status_code=403,
-            detail=f"You've used all {org.month_pages} of your {org.page_limit} monthly page limit. Upgrade your plan for more pages.",
-        )
+    if org and org.page_limit is not None:
+        effective_limit = org.page_limit + org.bonus_pages
+        if org.month_pages >= effective_limit:
+            raise HTTPException(
+                status_code=403,
+                detail=f"You've used all {org.month_pages} of your {effective_limit} page limit. Upgrade your plan for more pages.",
+            )
 
     custom_categories: list[dict] | None = None
     if categories:
@@ -326,12 +329,14 @@ async def upload_statements(
     total_image_pages = sum(s.actual_pages for s in statements if s.processing_type == "image")
 
     # Enforce monthly page limit (post-check: reject if this upload would exceed the limit)
-    if org and org.page_limit is not None and org.month_pages + total_pages > org.page_limit:
-        remaining = max(0, org.page_limit - org.month_pages)
-        raise HTTPException(
-            status_code=403,
-            detail=f"This upload has {total_pages} pages but you only have {remaining} of your {org.page_limit} monthly page limit remaining. Upgrade your plan or try uploading fewer files.",
-        )
+    if org and org.page_limit is not None:
+        effective_limit = org.page_limit + org.bonus_pages
+        if org.month_pages + total_pages > effective_limit:
+            remaining = max(0, effective_limit - org.month_pages)
+            raise HTTPException(
+                status_code=403,
+                detail=f"This upload has {total_pages} pages but you only have {remaining} of your {effective_limit} page limit remaining. Upgrade your plan or try uploading fewer files.",
+            )
     total_txns = sum(s.transaction_count for s in statements)
     doc_count = len(statements)
 
@@ -367,6 +372,12 @@ async def upload_statements(
             org.month_image_pages += total_image_pages
             org.month_transactions += total_txns
             org.month_bytes_processed += total_bytes
+
+            # Deduct bonus pages if regular quota was exceeded
+            if org.page_limit is not None and org.month_pages > org.page_limit:
+                bonus_used = min(org.month_pages - org.page_limit, total_pages, org.bonus_pages)
+                org.bonus_pages -= bonus_used
+
             session.add(org)
 
         await session.commit()

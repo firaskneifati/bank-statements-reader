@@ -39,6 +39,7 @@ class Organization(SQLModel, table=True):
 
     # Limits (None = unlimited)
     page_limit: int | None = Field(default=None)
+    bonus_pages: int = Field(default=0)
 
     # Current billing period (reset monthly)
     month_uploads: int = Field(default=0)

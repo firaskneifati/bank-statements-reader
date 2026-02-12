@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { Upload, FileText, ImageIcon } from "lucide-react";
+import { Upload, FileText, ImageIcon, Sheet } from "lucide-react";
 
 interface FileUploaderProps {
   onUpload: (files: File[]) => void;
@@ -14,10 +14,16 @@ const ACCEPTED_TYPES = {
   "image/jpeg": [".jpg", ".jpeg"],
   "image/png": [".png"],
   "image/heic": [".heic"],
+  "text/csv": [".csv"],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
 };
 
 function isImageFile(file: File) {
   return file.type.startsWith("image/") || /\.(jpg|jpeg|png|heic)$/i.test(file.name);
+}
+
+function isSpreadsheetFile(file: File) {
+  return /\.(csv|xlsx)$/i.test(file.name);
 }
 
 export function FileUploader({ onUpload, disabled }: FileUploaderProps) {
@@ -68,7 +74,7 @@ export function FileUploader({ onUpload, disabled }: FileUploaderProps) {
                 Drag & drop bank statements here
               </p>
               <p className="text-gray-500 text-sm">
-                PDF or images (JPEG, PNG, HEIC) &middot; Max 10MB each
+                PDF, images (JPEG, PNG, HEIC), or spreadsheets (CSV, XLSX) &middot; Max 10MB each
               </p>
               <p className="text-gray-400 text-xs mt-1">
                 Text-based PDFs give the best results. Scanned PDFs and images are supported but may need more human review.
@@ -82,7 +88,9 @@ export function FileUploader({ onUpload, disabled }: FileUploaderProps) {
             <div className="mt-3 text-sm text-gray-500">
               {acceptedFiles.map((file) => (
                 <div key={file.name} className="flex items-center gap-2">
-                  {isImageFile(file) ? (
+                  {isSpreadsheetFile(file) ? (
+                    <Sheet className="h-4 w-4" />
+                  ) : isImageFile(file) ? (
                     <ImageIcon className="h-4 w-4" />
                   ) : (
                     <FileText className="h-4 w-4" />

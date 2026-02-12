@@ -97,6 +97,25 @@ async def delete_user(email: str):
         print(f"Deleted user: {email}")
 
 
+async def grant_pages(email: str, pages: int):
+    if not async_session_factory:
+        print("Error: DATABASE_URL not configured")
+        sys.exit(1)
+
+    async with async_session_factory() as session:
+        result = await session.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if not user:
+            print(f"Error: {email} not found")
+            sys.exit(1)
+
+        org = await session.get(Organization, user.org_id)
+        org.bonus_pages += pages
+        session.add(org)
+        await session.commit()
+        print(f"Granted {pages} bonus pages to {email} (total bonus: {org.bonus_pages})")
+
+
 async def show_usage():
     if not async_session_factory:
         print("Error: DATABASE_URL not configured")
@@ -134,6 +153,8 @@ async def show_usage():
             user_obj = user_result.scalar_one()
             org = await session.get(Organization, user_obj.org_id)
             limit_str = f"  |  Limit: {org.page_limit} pages" if org and org.page_limit else ""
+            if org and org.bonus_pages > 0:
+                limit_str += f" (+{org.bonus_pages} bonus)"
 
             print(f"\n  {name} <{email}>")
             print(f"    Joined: {created.strftime('%Y-%m-%d')}")
@@ -182,6 +203,11 @@ def main():
     sl.add_argument("--email", required=True)
     sl.add_argument("--pages", type=int, required=True, help="Page limit (0 for unlimited)")
 
+    # grant-pages
+    gp = sub.add_parser("grant-pages", help="Grant bonus page credits to a user")
+    gp.add_argument("--email", required=True)
+    gp.add_argument("--pages", type=int, required=True, help="Number of bonus pages to add")
+
     # usage
     sub.add_parser("usage", help="Show usage statistics for all users")
 
@@ -193,6 +219,8 @@ def main():
         asyncio.run(delete_user(args.email))
     elif args.command == "set-limit":
         asyncio.run(set_limit(args.email, args.pages or None))
+    elif args.command == "grant-pages":
+        asyncio.run(grant_pages(args.email, args.pages))
     elif args.command == "usage":
         asyncio.run(show_usage())
     else:

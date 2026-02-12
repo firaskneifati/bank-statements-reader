@@ -57,5 +57,6 @@ async def get_usage(
         month_exports=org.month_exports if org else 0,
         month_bytes_processed=org.month_bytes_processed if org else 0,
         page_limit=org.page_limit if org else None,
+        bonus_pages=org.bonus_pages if org else 0,
         plan=org.plan if org else "free",
     )

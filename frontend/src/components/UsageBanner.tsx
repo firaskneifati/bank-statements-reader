@@ -36,8 +36,10 @@ export function UsageBanner({ usage, loading }: UsageBannerProps) {
   const currentPlan = usage.plan || "free";
   const showUpgrade = currentPlan === "free" || currentPlan === "starter";
   const hasLimit = usage.page_limit !== null && usage.page_limit !== undefined;
+  const bonusPages = usage.bonus_pages || 0;
   const pagesUsed = usage.month_pages;
-  const pagesLimit = usage.page_limit ?? 0;
+  const baseLimit = usage.page_limit ?? 0;
+  const pagesLimit = baseLimit + bonusPages;
   const percentage = hasLimit ? Math.min((pagesUsed / pagesLimit) * 100, 100) : 0;
   const isNearLimit = hasLimit && percentage >= 80;
   const isAtLimit = hasLimit && pagesUsed >= pagesLimit;
@@ -82,6 +84,9 @@ export function UsageBanner({ usage, loading }: UsageBannerProps) {
               }`}
             >
               / {formatNumber(pagesLimit)}
+              {bonusPages > 0 && (
+                <span className="text-xs ml-1 opacity-75">(+{formatNumber(bonusPages)} bonus)</span>
+              )}
             </span>
           </div>
           <p

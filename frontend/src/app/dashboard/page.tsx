@@ -420,11 +420,13 @@ export default function Home() {
                   const textPages = visibleStatements.filter((s) => s!.processing_type === "text").reduce((sum, s) => sum + (s!.actual_pages || s!.page_count), 0);
                   const imagePages = visibleStatements.filter((s) => s!.processing_type === "image").reduce((sum, s) => sum + (s!.actual_pages || 1), 0);
                   const ocrPages = visibleStatements.filter((s) => s!.processing_type === "ocr").reduce((sum, s) => sum + (s!.actual_pages || s!.page_count), 0);
+                  const spreadsheetPages = visibleStatements.filter((s) => s!.processing_type === "spreadsheet").reduce((sum, s) => sum + (s!.actual_pages || 1), 0);
                   const parts: string[] = [];
                   if (textPages > 0) parts.push(`${textPages} text`);
                   if (ocrPages > 0) parts.push(`${ocrPages} scanned`);
                   if (imagePages > 0) parts.push(`${imagePages} image`);
-                  const total = textPages + imagePages + ocrPages;
+                  if (spreadsheetPages > 0) parts.push(`${spreadsheetPages} spreadsheet`);
+                  const total = textPages + imagePages + ocrPages + spreadsheetPages;
                   return (
                     <span>
                       {parts.length > 1 ? parts.join(" + ") + " = " : ""}
