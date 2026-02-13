@@ -385,7 +385,7 @@ export default function Home() {
                     }`}
                   >
                     <FileText className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate">{s.filename}</span> ({s.transaction_count})
+                    <span className="break-all">{s.filename}</span> ({s.transaction_count})
                     <span className="text-[10px] opacity-60">
                       {s.actual_pages || s.page_count}p{s.processing_type === "image" ? " img" : s.processing_type === "ocr" ? " scan" : ""}
                       {s.ocr_confidence != null && ` ${Math.round(s.ocr_confidence * 100)}%`}
