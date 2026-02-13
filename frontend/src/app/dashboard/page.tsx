@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { FileUploader } from "@/components/FileUploader";
 import { CategoryManager } from "@/components/CategoryManager";
@@ -90,6 +90,8 @@ export default function Home() {
     setCategories(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   };
+
+  const categoryNames = useMemo(() => categories.map((c) => c.name), [categories]);
 
   const [addingMore, setAddingMore] = useState(false);
   const [showAddDropzone, setShowAddDropzone] = useState(false);
@@ -238,11 +240,7 @@ export default function Home() {
     setSelectedStatement(null);
   };
 
-  const handleCategoryChange = (stmtIndex: number, txIndex: number, newCategory: string) => {
-    handleFieldChange(stmtIndex, txIndex, "category", newCategory);
-  };
-
-  const handleFieldChange = (stmtIndex: number, txIndex: number, field: string, value: string | number | null) => {
+  const handleFieldChange = useCallback((stmtIndex: number, txIndex: number, field: string, value: string | number | null) => {
     setData((prev) => {
       if (!prev) return prev;
       const updated = {
@@ -265,7 +263,11 @@ export default function Home() {
       };
       return updated;
     });
-  };
+  }, []);
+
+  const handleCategoryChange = useCallback((stmtIndex: number, txIndex: number, newCategory: string) => {
+    handleFieldChange(stmtIndex, txIndex, "category", newCategory);
+  }, [handleFieldChange]);
 
   const visibleStatements = selectedStatement !== null
     ? [data?.statements[selectedStatement]].filter(Boolean)
@@ -282,7 +284,7 @@ export default function Home() {
   const statementsWithIndices = selectedStatement !== null
     ? [{ stmt: data?.statements[selectedStatement], stmtIdx: selectedStatement }]
     : (data?.statements ?? []).map((stmt, i) => ({ stmt, stmtIdx: i }));
-  const filteredTransactions = statementsWithIndices.flatMap(({ stmt, stmtIdx }) =>
+  const filteredTransactions = useMemo(() => statementsWithIndices.flatMap(({ stmt, stmtIdx }) =>
     stmt!.transactions.map((t, txIdx) => ({
       ...t,
       source: stmt!.filename,
@@ -290,7 +292,7 @@ export default function Home() {
       _stmtIndex: stmtIdx,
       _txIndex: txIdx,
     }))
-  );
+  ), [data, selectedStatement]);
   const totalDebits = visibleStatements.reduce((sum, s) => sum + s!.total_debits, 0);
   const totalCredits = visibleStatements.reduce((sum, s) => sum + s!.total_credits, 0);
 
@@ -481,7 +483,7 @@ export default function Home() {
           <CategoryManager categories={categories} onChange={handleCategoriesChange} />
           <TransactionTable
             transactions={filteredTransactions}
-            categories={categories.map((c) => c.name)}
+            categories={categoryNames}
             onCategoryChange={handleCategoryChange}
             onFieldChange={handleFieldChange}
             onSortedRowsChange={setSortedTransactions}
