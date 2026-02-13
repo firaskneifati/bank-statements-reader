@@ -29,7 +29,7 @@ Return a JSON array of transactions. Each transaction should have:
 - "category": string — classify each transaction into exactly one of these categories:
 {categories}
 
-Use your best judgment based on the merchant name, description, and context. For bank transfers (e.g. "Online Banking transfer"), try to infer the purpose from any additional context. If a transfer description is generic with no clues, use "Transfers".
+CATEGORIZATION: For each transaction, first identify what the merchant or business actually is (e.g. a restaurant, grocery store, gas station, subscription service, online retailer, etc.) using your world knowledge. Many merchant names on bank statements are abbreviated or cryptic — think about what real-world business the name refers to before choosing a category. For example, "MADEMOISELLE TORONTO" is a restaurant, "MUJI" is a retail store, "AMZN" is Amazon (shopping). Use this identification to pick the most accurate category. For bank transfers (e.g. "Online Banking transfer"), try to infer the purpose from any additional context. If a transfer description is generic with no clues, use "Transfers".
 
 For credit card statements: "date" is the transaction date (when the purchase was made) and "posting_date" is the posting date (when it appeared on the account). If only one date is shown, use it as "date" and set "posting_date" to null.
 
@@ -94,7 +94,7 @@ Return a JSON array of transactions. Each transaction should have:
 - "category": string — classify each transaction into exactly one of these categories:
 {categories}
 
-Use your best judgment based on the merchant name, description, and context. For bank transfers (e.g. "Online Banking transfer"), try to infer the purpose from any additional context. If a transfer description is generic with no clues, use "Transfers".
+CATEGORIZATION: For each transaction, first identify what the merchant or business actually is (e.g. a restaurant, grocery store, gas station, subscription service, online retailer, etc.) using your world knowledge. Many merchant names on bank statements are abbreviated or cryptic — think about what real-world business the name refers to before choosing a category. For example, "MADEMOISELLE TORONTO" is a restaurant, "MUJI" is a retail store, "AMZN" is Amazon (shopping). Use this identification to pick the most accurate category. For bank transfers (e.g. "Online Banking transfer"), try to infer the purpose from any additional context. If a transfer description is generic with no clues, use "Transfers".
 
 For credit card statements: "date" is the transaction date (when the purchase was made) and "posting_date" is the posting date (when it appeared on the account). If only one date is shown, use it as "date" and set "posting_date" to null.
 
