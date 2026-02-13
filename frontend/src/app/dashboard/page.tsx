@@ -311,12 +311,12 @@ export default function Home() {
       {state === "uploading" && <UploadProgress progress={uploadProgress} onCancel={() => { cancelRef.current = true; }} />}
 
       {state === "error" && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-          <div className="flex items-start gap-3">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 overflow-hidden">
+          <div className="flex items-start gap-3 min-w-0">
             <AlertCircle className="h-6 w-6 text-red-500 flex-shrink-0 mt-0.5" />
-            <div>
+            <div className="min-w-0">
               <h3 className="text-red-800 font-semibold">Upload Failed</h3>
-              <p className="text-red-700 mt-1">{error}</p>
+              <p className="text-red-700 mt-1 break-words">{error}</p>
               <button
                 onClick={handleDiscard}
                 className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-800 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
@@ -338,7 +338,7 @@ export default function Home() {
             const uniqueErrors = [...new Set(errors.map((f) => f.error))];
             const allSameError = uniqueErrors.length === 1;
             return (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800 break-words overflow-hidden">
                 {allSameError ? (
                   <>
                     <strong>{errors.length} file{errors.length !== 1 ? "s" : ""} failed:</strong>{" "}
@@ -361,7 +361,7 @@ export default function Home() {
           )}
 
           {data.statements.length >= 1 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 min-w-0">
               <button
                 onClick={() => setSelectedStatement(null)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -378,14 +378,14 @@ export default function Home() {
                   <button
                     key={i}
                     onClick={() => setSelectedStatement(i)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors max-w-full ${
                       selectedStatement === i
                         ? `${c.activeBg} text-white`
                         : `${c.bg} ${c.text} border ${c.border} hover:opacity-80`
                     }`}
                   >
-                    <FileText className="h-3.5 w-3.5" />
-                    {s.filename} ({s.transaction_count})
+                    <FileText className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="truncate">{s.filename}</span> ({s.transaction_count})
                     <span className="text-[10px] opacity-60">
                       {s.actual_pages || s.page_count}p{s.processing_type === "image" ? " img" : s.processing_type === "ocr" ? " scan" : ""}
                       {s.ocr_confidence != null && ` ${Math.round(s.ocr_confidence * 100)}%`}
