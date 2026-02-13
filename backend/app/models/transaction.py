@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class Transaction(BaseModel):
@@ -9,6 +9,11 @@ class Transaction(BaseModel):
     type: str  # "debit" or "credit"
     balance: float | None = None
     category: str = "Other"
+
+    @field_validator("date", mode="before")
+    @classmethod
+    def coerce_date(cls, v: object) -> str:
+        return str(v) if v is not None else ""
 
 
 class StatementResult(BaseModel):
