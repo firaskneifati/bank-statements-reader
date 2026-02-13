@@ -11,7 +11,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 async function handleResponse(response: Response, fallbackMsg: string): Promise<Response> {
   if (response.status === 401) {
-    await signOut({ callbackUrl: "/login" });
+    await signOut({ callbackUrl: "/sign-in" });
     throw new Error("Session expired");
   }
   if (!response.ok) {
