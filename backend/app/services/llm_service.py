@@ -134,7 +134,6 @@ async def _parse_with_claude(
 
     category_block = _build_category_block(custom_categories)
     prompt = PARSE_PROMPT_TEMPLATE.format(categories=category_block, text=text[:100000])
-    logger.info("Extracted text sent to LLM:\n%s", text[:5000])
 
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
