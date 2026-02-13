@@ -13,11 +13,13 @@ CRITICAL: You must be 100% certain of every single character and number you extr
 Do NOT guess, approximate, or fill in unclear characters. If even one transaction has a blurry digit, an unclear letter, or an ambiguous character, reject the ENTIRE file by returning [].
 Only return transactions if you can read every single character with complete confidence.
 
+MULTI-LINE TRANSACTIONS: Bank statements often have transactions where the description wraps to a second or third line. These continuation lines are NOT separate transactions. A new transaction ONLY starts when there is a new DATE in the leftmost column. Numbers that appear within a description line (e.g. reference numbers like "Credit Adjustment 2074", cheque numbers, confirmation codes) are NOT amounts — they are part of the description. Only numbers that are clearly formatted as monetary amounts (with commas and decimals, aligned in the amount/balance columns) should be treated as amounts. When in doubt, a number embedded in text is a reference number, not an amount.
+
 Return a JSON array of transactions. Each transaction should have:
 - "date": string in YYYY-MM-DD format (the transaction date)
 - "posting_date": string in YYYY-MM-DD format or null (the posting date, if available — credit card statements often show both a transaction date and a posting date)
-- "description": string (the full transaction description exactly as shown, including any reference numbers, confirmation codes, or IDs — do NOT remove numbers)
-- "amount": number (always positive, never negative)
+- "description": string (the FULL transaction description including ALL continuation lines, reference numbers, confirmation codes, or IDs — concatenate multi-line descriptions into one string)
+- "amount": number (always positive, never negative — only use values from the monetary amount columns, NOT reference numbers embedded in the description)
 - "type": "debit" or "credit" — determined by the sign or context:
   - For chequing/savings: withdrawals = "debit", deposits = "credit"
   - For credit cards: purchases/charges (positive amounts) = "debit", payments/refunds/credits (negative amounts, amounts with a minus sign, or marked CR) = "credit"
@@ -74,11 +76,13 @@ CRITICAL: You must be 100% certain of every single character and number you extr
 Do NOT guess, approximate, or fill in unclear characters. If even one transaction has a blurry digit, an unclear letter, or an ambiguous character, reject the ENTIRE file by returning [].
 Only return transactions if you can read every single character with complete confidence. A slightly out-of-focus photo, poor lighting, or partial visibility means you must return [].
 
+MULTI-LINE TRANSACTIONS: Bank statements often have transactions where the description wraps to a second or third line. These continuation lines are NOT separate transactions. A new transaction ONLY starts when there is a new DATE in the leftmost column. Numbers that appear within a description line (e.g. reference numbers like "Credit Adjustment 2074", cheque numbers, confirmation codes) are NOT amounts — they are part of the description. Only numbers that are clearly formatted as monetary amounts (with commas and decimals, aligned in the amount/balance columns) should be treated as amounts. When in doubt, a number embedded in text is a reference number, not an amount.
+
 Return a JSON array of transactions. Each transaction should have:
 - "date": string in YYYY-MM-DD format (the transaction date)
 - "posting_date": string in YYYY-MM-DD format or null (the posting date, if available — credit card statements often show both a transaction date and a posting date)
-- "description": string (the full transaction description exactly as shown, including any reference numbers, confirmation codes, or IDs — do NOT remove numbers)
-- "amount": number (always positive, never negative)
+- "description": string (the FULL transaction description including ALL continuation lines, reference numbers, confirmation codes, or IDs — concatenate multi-line descriptions into one string)
+- "amount": number (always positive, never negative — only use values from the monetary amount columns, NOT reference numbers embedded in the description)
 - "type": "debit" or "credit" — pay close attention to the sign of each amount:
   - For chequing/savings: withdrawals = "debit", deposits = "credit"
   - For credit cards: purchases/charges (positive amounts) = "debit", payments/refunds/credits (negative amounts, amounts with a minus sign, or marked CR) = "credit"
