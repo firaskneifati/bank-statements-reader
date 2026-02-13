@@ -350,7 +350,7 @@ def _usage_from_org(org: Organization) -> UsageStats:
 
 
 @router.post("/upload", response_model=UploadResponse)
-@limiter.limit("10/minute")
+@limiter.limit("100/minute")
 async def upload_statements(
     request: Request,
     current_user: CurrentUser,
