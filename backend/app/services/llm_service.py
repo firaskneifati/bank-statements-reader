@@ -15,11 +15,13 @@ Only return transactions if you can read every single character with complete co
 
 MULTI-LINE TRANSACTIONS: Bank statements often have transactions where the description wraps to a second or third line. These continuation lines are NOT separate transactions. A new transaction ONLY starts when there is a new DATE in the leftmost column. Numbers that appear within a description line (e.g. reference numbers like "Credit Adjustment 2074", cheque numbers, confirmation codes) are NOT amounts — they are part of the description. Only numbers that are clearly formatted as monetary amounts (with commas and decimals, aligned in the amount/balance columns) should be treated as amounts. When in doubt, a number embedded in text is a reference number, not an amount.
 
+COLUMN LAYOUT: Before extracting transactions, identify the column structure from the statement's header row (e.g. "Date | Description | Withdrawals | Deposits | Balance" or "Date | Description | Amount | Balance"). Use the header to determine which column each monetary value belongs to. Every transaction MUST have its amount extracted from the correct column — never skip an amount or confuse it with the balance.
+
 Return a JSON array of transactions. Each transaction should have:
 - "date": string in YYYY-MM-DD format (the transaction date)
 - "posting_date": string in YYYY-MM-DD format or null (the posting date, if available — credit card statements often show both a transaction date and a posting date)
 - "description": string (the FULL transaction description including ALL continuation lines, reference numbers, confirmation codes, or IDs — concatenate multi-line descriptions into one string)
-- "amount": number (always positive, never negative — only use values from the monetary amount columns, NOT reference numbers embedded in the description)
+- "amount": number (always positive, never negative — only use values from the monetary amount columns, NOT reference numbers embedded in the description. Never confuse the balance column with the transaction amount column.)
 - "type": "debit" or "credit" — determined by the sign or context:
   - For chequing/savings: withdrawals = "debit", deposits = "credit"
   - For credit cards: purchases/charges (positive amounts) = "debit", payments/refunds/credits (negative amounts, amounts with a minus sign, or marked CR) = "credit"
@@ -78,11 +80,13 @@ Only return transactions if you can read every single character with complete co
 
 MULTI-LINE TRANSACTIONS: Bank statements often have transactions where the description wraps to a second or third line. These continuation lines are NOT separate transactions. A new transaction ONLY starts when there is a new DATE in the leftmost column. Numbers that appear within a description line (e.g. reference numbers like "Credit Adjustment 2074", cheque numbers, confirmation codes) are NOT amounts — they are part of the description. Only numbers that are clearly formatted as monetary amounts (with commas and decimals, aligned in the amount/balance columns) should be treated as amounts. When in doubt, a number embedded in text is a reference number, not an amount.
 
+COLUMN LAYOUT: Before extracting transactions, identify the column structure from the statement's header row (e.g. "Date | Description | Withdrawals | Deposits | Balance" or "Date | Description | Amount | Balance"). Use the header to determine which column each monetary value belongs to. Every transaction MUST have its amount extracted from the correct column — never skip an amount or confuse it with the balance.
+
 Return a JSON array of transactions. Each transaction should have:
 - "date": string in YYYY-MM-DD format (the transaction date)
 - "posting_date": string in YYYY-MM-DD format or null (the posting date, if available — credit card statements often show both a transaction date and a posting date)
 - "description": string (the FULL transaction description including ALL continuation lines, reference numbers, confirmation codes, or IDs — concatenate multi-line descriptions into one string)
-- "amount": number (always positive, never negative — only use values from the monetary amount columns, NOT reference numbers embedded in the description)
+- "amount": number (always positive, never negative — only use values from the monetary amount columns, NOT reference numbers embedded in the description. Never confuse the balance column with the transaction amount column.)
 - "type": "debit" or "credit" — pay close attention to the sign of each amount:
   - For chequing/savings: withdrawals = "debit", deposits = "credit"
   - For credit cards: purchases/charges (positive amounts) = "debit", payments/refunds/credits (negative amounts, amounts with a minus sign, or marked CR) = "credit"
@@ -130,6 +134,7 @@ async def _parse_with_claude(
 
     category_block = _build_category_block(custom_categories)
     prompt = PARSE_PROMPT_TEMPLATE.format(categories=category_block, text=text[:100000])
+    logger.info("Extracted text sent to LLM:\n%s", text[:5000])
 
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 

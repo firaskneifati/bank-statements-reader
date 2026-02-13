@@ -22,7 +22,7 @@ def extract_text_from_pdf(file_path: str) -> tuple[str, int]:
                 if non_table_text:
                     text_parts.append(non_table_text)
             else:
-                page_text = page.extract_text()
+                page_text = page.extract_text(layout=True)
                 if page_text:
                     text_parts.append(page_text)
     return ("\n\n".join(text_parts), page_count)
