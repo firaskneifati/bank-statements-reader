@@ -1,4 +1,4 @@
-import { getSession } from "next-auth/react";
+import { getSession, signOut } from "next-auth/react";
 import { UploadResponse, ExportRequest, CategoryConfig, UsageStats, BillingStatus } from "./types";
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -7,6 +7,18 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
     return { Authorization: `Bearer ${session.accessToken}` };
   }
   return {};
+}
+
+async function handleResponse(response: Response, fallbackMsg: string): Promise<Response> {
+  if (response.status === 401) {
+    await signOut({ callbackUrl: "/login" });
+    throw new Error("Session expired");
+  }
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: fallbackMsg }));
+    throw new Error(error.detail || `${fallbackMsg} (${response.status})`);
+  }
+  return response;
 }
 
 export async function uploadSingleStatement(
@@ -32,11 +44,7 @@ export async function uploadSingleStatement(
   });
   clearTimeout(timeoutId);
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Upload failed" }));
-    throw new Error(error.detail || `Upload failed (${response.status})`);
-  }
-
+  await handleResponse(response, "Upload failed");
   return response.json();
 }
 
@@ -63,11 +71,7 @@ export async function uploadStatements(
   });
   clearTimeout(timeoutId);
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Upload failed" }));
-    throw new Error(error.detail || `Upload failed (${response.status})`);
-  }
-
+  await handleResponse(response, "Upload failed");
   return response.json();
 }
 
@@ -78,11 +82,7 @@ export async function fetchUsage(): Promise<UsageStats> {
     headers: { ...authHeaders },
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Failed to fetch usage" }));
-    throw new Error(error.detail || `Failed to fetch usage (${response.status})`);
-  }
-
+  await handleResponse(response, "Failed to fetch usage");
   return response.json();
 }
 
@@ -98,11 +98,7 @@ export async function createCheckoutSession(plan: string): Promise<{ url: string
     }),
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Failed to create checkout session" }));
-    throw new Error(error.detail || `Checkout failed (${response.status})`);
-  }
-
+  await handleResponse(response, "Failed to create checkout session");
   return response.json();
 }
 
@@ -116,11 +112,7 @@ export async function createPortalSession(): Promise<{ url: string }> {
     }),
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Failed to create portal session" }));
-    throw new Error(error.detail || `Portal failed (${response.status})`);
-  }
-
+  await handleResponse(response, "Failed to create portal session");
   return response.json();
 }
 
@@ -130,11 +122,7 @@ export async function fetchBillingStatus(): Promise<BillingStatus> {
     headers: { ...authHeaders },
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Failed to fetch billing status" }));
-    throw new Error(error.detail || `Failed to fetch billing (${response.status})`);
-  }
-
+  await handleResponse(response, "Failed to fetch billing status");
   return response.json();
 }
 
@@ -145,11 +133,7 @@ export async function syncBilling(): Promise<{ plan: string }> {
     headers: { "Content-Type": "application/json", ...authHeaders },
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Failed to sync billing" }));
-    throw new Error(error.detail || `Sync failed (${response.status})`);
-  }
-
+  await handleResponse(response, "Failed to sync billing");
   return response.json();
 }
 
@@ -160,10 +144,7 @@ export async function cancelSubscription(): Promise<void> {
     headers: { "Content-Type": "application/json", ...authHeaders },
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Failed to cancel subscription" }));
-    throw new Error(error.detail || `Cancel failed (${response.status})`);
-  }
+  await handleResponse(response, "Failed to cancel subscription");
 }
 
 export async function exportTransactions(request: ExportRequest): Promise<void> {
@@ -175,10 +156,7 @@ export async function exportTransactions(request: ExportRequest): Promise<void> 
     body: JSON.stringify(request),
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Export failed" }));
-    throw new Error(error.detail || `Export failed (${response.status})`);
-  }
+  await handleResponse(response, "Export failed");
 
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
