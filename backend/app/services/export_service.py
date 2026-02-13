@@ -6,7 +6,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, numbers
 
 from app.models.transaction import Transaction
 
-HEADERS = ["Date", "Posting Date", "Description", "Amount", "Type", "Balance", "Category"]
+HEADERS = ["Date", "Posting Date", "Description", "Spent", "Received", "Balance", "Category"]
 
 
 def generate_csv(transactions: list[Transaction]) -> io.StringIO:
@@ -14,15 +14,31 @@ def generate_csv(transactions: list[Transaction]) -> io.StringIO:
     writer = csv.writer(output)
     writer.writerow(HEADERS)
     for tx in transactions:
+        amount = abs(tx.amount)
+        spent = f"{amount:.2f}" if tx.type == "debit" else ""
+        received = f"{amount:.2f}" if tx.type == "credit" else ""
         writer.writerow([
             tx.date,
             tx.posting_date or "",
             tx.description,
-            f"{tx.amount:.2f}",
-            tx.type,
+            spent,
+            received,
             f"{tx.balance:.2f}" if tx.balance is not None else "",
             tx.category,
         ])
+    output.seek(0)
+    return output
+
+
+def generate_quickbooks_csv(transactions: list[Transaction]) -> io.StringIO:
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Date", "Description", "Spent", "Received"])
+    for tx in transactions:
+        amount = abs(tx.amount)
+        spent = f"{amount:.2f}" if tx.type == "debit" else ""
+        received = f"{amount:.2f}" if tx.type == "credit" else ""
+        writer.writerow([tx.date, tx.description, spent, received])
     output.seek(0)
     return output
 
@@ -48,16 +64,21 @@ def generate_excel(transactions: list[Transaction]) -> io.BytesIO:
 
     for row_idx, tx in enumerate(transactions, 2):
         fill = credit_fill if tx.type == "credit" else debit_fill
+        amount = abs(tx.amount)
 
         ws.cell(row=row_idx, column=1, value=tx.date).fill = fill
         ws.cell(row=row_idx, column=2, value=tx.posting_date or "").fill = fill
         ws.cell(row=row_idx, column=3, value=tx.description).fill = fill
 
-        amount_cell = ws.cell(row=row_idx, column=4, value=tx.amount)
-        amount_cell.number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
-        amount_cell.fill = fill
+        # Spent column (debit)
+        spent_cell = ws.cell(row=row_idx, column=4, value=amount if tx.type == "debit" else None)
+        spent_cell.number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
+        spent_cell.fill = fill
 
-        ws.cell(row=row_idx, column=5, value=tx.type).fill = fill
+        # Received column (credit)
+        received_cell = ws.cell(row=row_idx, column=5, value=amount if tx.type == "credit" else None)
+        received_cell.number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
+        received_cell.fill = fill
 
         if tx.balance is not None:
             balance_cell = ws.cell(row=row_idx, column=6, value=tx.balance)

@@ -88,9 +88,10 @@ interface TransactionTableProps {
   categories?: string[];
   onCategoryChange?: (stmtIndex: number, txIndex: number, newCategory: string) => void;
   onFieldChange?: (stmtIndex: number, txIndex: number, field: string, value: string | number | null) => void;
+  onSortedRowsChange?: (sortedTransactions: Transaction[]) => void;
 }
 
-export function TransactionTable({ transactions, categories, onCategoryChange, onFieldChange }: TransactionTableProps) {
+export function TransactionTable({ transactions, categories, onCategoryChange, onFieldChange, onSortedRowsChange }: TransactionTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const hasPostingDates = transactions.some((t) => t.posting_date);
@@ -147,20 +148,24 @@ export function TransactionTable({ transactions, categories, onCategoryChange, o
           );
         },
       }),
-      columnHelper.accessor("amount", {
-        header: "Amount",
+      columnHelper.display({
+        id: "spent",
+        header: "Spent",
+        sortingFn: (rowA, rowB) => {
+          const a = rowA.original.type === "debit" ? rowA.original.amount : 0;
+          const b = rowB.original.type === "debit" ? rowB.original.amount : 0;
+          return a - b;
+        },
         cell: (info) => {
           const tx = info.row.original;
-          const display = (
-            <span className={tx.type === "credit" ? "text-green-700 font-semibold" : "text-red-700 font-semibold"}>
-              {tx.type === "credit" ? "+" : "-"}{formatCurrency(info.getValue())}
-            </span>
-          );
+          if (tx.type !== "debit") return null;
+          const absAmount = Math.abs(tx.amount);
+          const display = <span className="text-red-700 font-semibold">{formatCurrency(absAmount)}</span>;
           if (!onFieldChange) return display;
           const { stmtIdx, txIdx } = getIndices(info);
           return (
             <EditableCell
-              value={info.getValue()}
+              value={absAmount}
               type="number"
               onSave={(v) => onFieldChange(stmtIdx, txIdx, "amount", v)}
               displayValue={display}
@@ -168,29 +173,28 @@ export function TransactionTable({ transactions, categories, onCategoryChange, o
           );
         },
       }),
-      columnHelper.accessor("type", {
-        header: "Type",
+      columnHelper.display({
+        id: "received",
+        header: "Received",
+        sortingFn: (rowA, rowB) => {
+          const a = rowA.original.type === "credit" ? rowA.original.amount : 0;
+          const b = rowB.original.type === "credit" ? rowB.original.amount : 0;
+          return a - b;
+        },
         cell: (info) => {
-          const current = info.getValue();
-          if (!onFieldChange) {
-            return (
-              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${current === "credit" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                {current}
-              </span>
-            );
-          }
+          const tx = info.row.original;
+          if (tx.type !== "credit") return null;
+          const absAmount = Math.abs(tx.amount);
+          const display = <span className="text-green-700 font-semibold">{formatCurrency(absAmount)}</span>;
+          if (!onFieldChange) return display;
           const { stmtIdx, txIdx } = getIndices(info);
           return (
-            <select
-              value={current}
-              onChange={(e) => onFieldChange(stmtIdx, txIdx, "type", e.target.value)}
-              className={`appearance-none px-2 py-0.5 pr-5 rounded-full text-xs font-medium cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%226%22%3E%3Cpath%20d%3D%22M0%200l5%206%205-6z%22%20fill%3D%22%23666%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_6px] bg-[right_6px_center] bg-no-repeat ${
-                current === "credit" ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200"
-              }`}
-            >
-              <option value="debit">debit</option>
-              <option value="credit">credit</option>
-            </select>
+            <EditableCell
+              value={absAmount}
+              type="number"
+              onSave={(v) => onFieldChange(stmtIdx, txIdx, "amount", v)}
+              displayValue={display}
+            />
           );
         },
       }),
@@ -277,6 +281,13 @@ export function TransactionTable({ transactions, categories, onCategoryChange, o
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
+
+  const sortedRows = table.getSortedRowModel().rows;
+  useEffect(() => {
+    if (onSortedRowsChange) {
+      onSortedRowsChange(sortedRows.map((r) => r.original));
+    }
+  }, [sortedRows, onSortedRowsChange]);
 
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200">

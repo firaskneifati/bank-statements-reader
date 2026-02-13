@@ -184,7 +184,7 @@ export async function exportTransactions(request: ExportRequest): Promise<void> 
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${request.filename}.${request.format === "xlsx" ? "xlsx" : "csv"}`;
+  a.download = `${request.filename}${request.format === "quickbooks" ? "_quickbooks" : ""}.${request.format === "xlsx" ? "xlsx" : "csv"}`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

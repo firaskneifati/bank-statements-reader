@@ -16,7 +16,7 @@ export function ExportButtons({
 }: ExportButtonsProps) {
   const [exporting, setExporting] = useState<string | null>(null);
 
-  const handleExport = async (format: "csv" | "xlsx") => {
+  const handleExport = async (format: "csv" | "xlsx" | "quickbooks") => {
     setExporting(format);
     try {
       await exportTransactions({ transactions, format, filename });
@@ -44,6 +44,14 @@ export function ExportButtons({
       >
         <FileSpreadsheet className="h-4 w-4" />
         {exporting === "xlsx" ? "Exporting..." : "Export Excel"}
+      </button>
+      <button
+        onClick={() => handleExport("quickbooks")}
+        disabled={exporting !== null}
+        className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-green-300 rounded-lg text-sm font-medium text-green-700 hover:bg-green-50 disabled:opacity-50 transition-colors"
+      >
+        <Download className="h-4 w-4" />
+        {exporting === "quickbooks" ? "Exporting..." : "QuickBooks CSV"}
       </button>
     </div>
   );

@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.transaction import ExportRequest as ExportRequestSchema
-from app.services.export_service import generate_csv, generate_excel
+from app.services.export_service import generate_csv, generate_excel, generate_quickbooks_csv
 from app.auth.dependencies import CurrentUser
 from app.db.engine import get_session
 from app.db.models import ExportLog, Organization
@@ -67,6 +67,15 @@ async def export_transactions(
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
                 "Content-Disposition": f'attachment; filename="{body.filename}.xlsx"'
+            },
+        )
+    elif body.format == "quickbooks":
+        output = generate_quickbooks_csv(body.transactions)
+        return StreamingResponse(
+            output,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f'attachment; filename="{body.filename}_quickbooks.csv"'
             },
         )
     else:

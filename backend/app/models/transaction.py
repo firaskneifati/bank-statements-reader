@@ -55,5 +55,5 @@ class UploadResponse(BaseModel):
 
 class ExportRequest(BaseModel):
     transactions: list[Transaction]
-    format: str = "csv"  # "csv" or "xlsx"
+    format: str = "csv"  # "csv", "xlsx", or "quickbooks"
     filename: str = "transactions"

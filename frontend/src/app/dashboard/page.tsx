@@ -10,7 +10,7 @@ import { ExportButtons } from "@/components/ExportButtons";
 import { UsageBanner } from "@/components/UsageBanner";
 import { UploadProgress, UploadProgressData } from "@/components/UploadProgress";
 import { uploadSingleStatement, fetchUsage } from "@/lib/api-client";
-import { UploadResponse, UsageStats, CategoryConfig, DEFAULT_CATEGORIES } from "@/lib/types";
+import { Transaction, UploadResponse, UsageStats, CategoryConfig, DEFAULT_CATEGORIES } from "@/lib/types";
 import { Header } from "@/components/Header";
 import { AlertCircle, RotateCcw, Trash2, FileText, Plus, X } from "lucide-react";
 
@@ -54,6 +54,7 @@ export default function Home() {
   const [categories, setCategories] = useState<CategoryConfig[]>(DEFAULT_CATEGORIES);
   const [usage, setUsage] = useState<UsageStats | null>(null);
   const [usageLoading, setUsageLoading] = useState(true);
+  const [sortedTransactions, setSortedTransactions] = useState<Transaction[]>([]);
 
   useEffect(() => {
     setCategories(loadCategories());
@@ -436,16 +437,16 @@ export default function Home() {
                 })()}
                 {" | "}
                 <span className="text-green-700">
-                  Credits: ${totalCredits.toLocaleString("en-CA", { minimumFractionDigits: 2 })}
+                  Received: ${totalCredits.toLocaleString("en-CA", { minimumFractionDigits: 2 })}
                 </span>
                 {" | "}
                 <span className="text-red-700">
-                  Debits: ${totalDebits.toLocaleString("en-CA", { minimumFractionDigits: 2 })}
+                  Spent: ${totalDebits.toLocaleString("en-CA", { minimumFractionDigits: 2 })}
                 </span>
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <ExportButtons transactions={filteredTransactions} />
+              <ExportButtons transactions={sortedTransactions.length > 0 ? sortedTransactions : filteredTransactions} />
               <button
                 onClick={() => setShowAddDropzone(!showAddDropzone)}
                 disabled={addingMore}
@@ -483,6 +484,7 @@ export default function Home() {
             categories={categories.map((c) => c.name)}
             onCategoryChange={handleCategoryChange}
             onFieldChange={handleFieldChange}
+            onSortedRowsChange={setSortedTransactions}
           />
           <CategorySummary transactions={filteredTransactions} />
         </>

@@ -87,6 +87,6 @@ export interface UploadResponse {
 
 export interface ExportRequest {
   transactions: Transaction[];
-  format: "csv" | "xlsx";
+  format: "csv" | "xlsx" | "quickbooks";
   filename: string;
 }
