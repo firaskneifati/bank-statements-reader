@@ -70,7 +70,7 @@ export default function TermsOfServicePage() {
               <li><strong>Basic</strong> — 100 pages/month for CA$15/mo</li>
               <li><strong>Starter</strong> — 400 pages/month for CA$49/mo</li>
               <li><strong>Pro</strong> — 2,000 pages/month for CA$199/mo</li>
-              <li><strong>Business</strong> — 10,000 pages/month for CA$499/mo</li>
+              <li><strong>Business</strong> — custom volume, contact us for pricing</li>
             </ul>
             <p className="mt-3">
               Paid subscriptions are processed by <strong>Stripe</strong> and renew automatically each billing cycle.

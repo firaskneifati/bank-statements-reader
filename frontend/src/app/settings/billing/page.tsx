@@ -67,11 +67,12 @@ const PLANS = [
   {
     id: "business",
     name: "Business",
-    price: "CA$499",
-    period: "/mo",
-    pages: 10000,
+    price: "Custom",
+    period: "",
+    pages: null as unknown as number,
+    contact: true,
     features: [
-      "10,000 pages/month",
+      "Custom page volume",
       "CSV & Excel export",
       "AI categorization",
       "Dedicated support",
@@ -360,6 +361,13 @@ export default function BillingPage() {
                       <div className="w-full py-2 text-center text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">
                         Active
                       </div>
+                    ) : plan.contact ? (
+                      <a
+                        href="/#contact"
+                        className="block w-full py-2 text-center text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                      >
+                        Contact Us
+                      </a>
                     ) : plan.id === "free" ? (
                       // No button for free plan — handled by cancel
                       <div className="w-full py-2 text-center text-sm text-gray-400">

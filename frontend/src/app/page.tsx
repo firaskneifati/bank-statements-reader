@@ -128,11 +128,12 @@ const PLANS = [
   },
   {
     name: "Business",
-    price: "CA$499",
-    period: "/mo",
-    pages: "10,000 pages/month",
+    price: "Custom",
+    period: "",
+    pages: "Custom volume",
+    contact: true,
     features: [
-      "10,000 pages/month",
+      "Custom page volume",
       "CSV & Excel export",
       "AI categorization",
       "Dedicated support",
@@ -231,7 +232,7 @@ export default async function LandingPage() {
         ],
         screenshot: "https://bankread.ai/opengraph-image",
         publisher: { "@id": "https://bankread.ai/#org" },
-        offers: PLANS.map((plan) => ({
+        offers: PLANS.filter((plan) => !plan.contact).map((plan) => ({
           "@type": "Offer",
           name: plan.name,
           price: plan.price.replace("CA$", ""),
@@ -566,16 +567,25 @@ export default async function LandingPage() {
                       </li>
                     ))}
                   </ul>
-                  <Link
-                    href={isLoggedIn ? "/settings/billing" : registrationOpen ? `/sign-up?plan=${plan.name.toLowerCase()}` : "/sign-in"}
-                    className={`block w-full text-center py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                      plan.popular
-                        ? "bg-blue-600 text-white hover:bg-blue-700"
-                        : "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                    }`}
-                  >
-                    {isLoggedIn ? "Manage Plan" : registrationOpen ? "Get Started" : "Sign In"}
-                  </Link>
+                  {plan.contact ? (
+                    <Link
+                      href="#contact"
+                      className="block w-full text-center py-2.5 text-sm font-medium rounded-lg transition-colors bg-gray-100 text-gray-900 hover:bg-gray-200"
+                    >
+                      Contact Us
+                    </Link>
+                  ) : (
+                    <Link
+                      href={isLoggedIn ? "/settings/billing" : registrationOpen ? `/sign-up?plan=${plan.name.toLowerCase()}` : "/sign-in"}
+                      className={`block w-full text-center py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                        plan.popular
+                          ? "bg-blue-600 text-white hover:bg-blue-700"
+                          : "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                      }`}
+                    >
+                      {isLoggedIn ? "Manage Plan" : registrationOpen ? "Get Started" : "Sign In"}
+                    </Link>
+                  )}
                 </div>
               ))}
             </div>
