@@ -2,10 +2,16 @@
 
 import { useSession } from "next-auth/react";
 import { Header } from "@/components/Header";
-import { ArrowLeft, CreditCard, Shield, ChevronRight } from "lucide-react";
+import { ArrowLeft, CreditCard, Shield, Tag, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 const SETTINGS_ITEMS = [
+  {
+    href: "/settings/categories",
+    icon: Tag,
+    title: "Category Groups",
+    description: "Manage category groups with auto-categorization rules",
+  },
   {
     href: "/settings/billing",
     icon: CreditCard,

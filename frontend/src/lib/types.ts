@@ -30,8 +30,39 @@ export interface Transaction {
   type: "debit" | "credit";
   balance: number | null;
   category: string;
+  category_source?: "ai" | "rule" | "manual";
   source?: string;
   sourceColor?: { bg: string; text: string; border: string; activeBg: string };
+}
+
+export interface CategoryRule {
+  id: string;
+  rule_type: "include" | "exclude";
+  pattern: string;
+  created_at: string;
+}
+
+export interface CategoryItem {
+  id: string;
+  name: string;
+  description: string | null;
+  sort_order: number;
+  rules: CategoryRule[];
+}
+
+export interface CategoryGroup {
+  id: string;
+  name: string;
+  is_active: boolean;
+  categories: CategoryItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SimilarityWarning {
+  message: string;
+  conflicting_name?: string | null;
+  conflicting_pattern?: string | null;
 }
 
 export interface StatementResult {

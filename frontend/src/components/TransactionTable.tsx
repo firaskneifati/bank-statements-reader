@@ -227,7 +227,11 @@ export function TransactionTable({ transactions, categories, onCategoryChange, o
                 onChange={(e) => onCategoryChange(stmtIdx, txIdx, e.target.value)}
                 className="appearance-none bg-blue-100 text-blue-800 px-2 py-0.5 pr-5 rounded-full text-xs font-medium cursor-pointer hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%226%22%3E%3Cpath%20d%3D%22M0%200l5%206%205-6z%22%20fill%3D%22%231e40af%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_6px] bg-[right_6px_center] bg-no-repeat"
               >
-                {[...categories].sort((a, b) => a.localeCompare(b)).map((cat) => (
+                {[...categories].sort((a, b) => {
+                  if (a.toLowerCase() === "other") return -1;
+                  if (b.toLowerCase() === "other") return 1;
+                  return a.localeCompare(b);
+                }).map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
                 {!categories.includes(current) && (
@@ -243,10 +247,18 @@ export function TransactionTable({ transactions, categories, onCategoryChange, o
           );
         },
       }),
+      columnHelper.accessor("category_source", {
+        header: "Source",
+        cell: (info) => {
+          const src = info.getValue() || "ai";
+          const label = src === "ai" ? "AI" : src === "rule" ? "Rule" : "Manual";
+          return <span className="text-xs text-gray-500">{label}</span>;
+        },
+      }),
       ...(hasSources
         ? [
             columnHelper.accessor("source", {
-              header: "Source",
+              header: "File",
               cell: (info) => {
                 const val = info.getValue() || "";
                 const short = val.replace(/\.pdf$/i, "");

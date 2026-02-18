@@ -20,7 +20,9 @@ from app.db.models import (  # noqa: F401
     Client,
     Upload,
     ExportLog,
-    CategoryTemplate,
+    CategoryGroup,
+    Category,
+    CategoryRule,
     AuditLog,
     RevokedToken,
 )

@@ -9,6 +9,8 @@ class Transaction(BaseModel):
     type: str  # "debit" or "credit"
     balance: float | None = None
     category: str = "Other"
+    category_source: str = "ai"  # "ai", "rule", or "manual"
+    source: str | None = None  # filename (set by frontend for exports)
 
     @field_validator("date", mode="before")
     @classmethod

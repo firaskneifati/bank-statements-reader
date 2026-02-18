@@ -3,9 +3,12 @@ import logging
 import math
 import os
 import tempfile
+import uuid
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlmodel import select
 
 from app.config import settings
 from app.models.transaction import StatementResult, UploadResponse, UsageStats
@@ -22,11 +25,12 @@ from app.services.image_service import (
 )
 from app.services.docai_service import extract_text_with_docai
 from app.services.categorization_service import categorize_transactions
+from app.services.rule_engine import apply_rules
 from app.services.spreadsheet_service import extract_text_from_spreadsheet
 from app.auth.dependencies import CurrentUser
 from app.limiter import limiter
 from app.db.engine import get_session
-from app.db.models import Upload, Organization
+from app.db.models import Upload, Organization, CategoryGroup, Category
 from app.services.audit import log_audit
 
 logger = logging.getLogger(__name__)
@@ -77,6 +81,7 @@ def _validate_file(contents: bytes, filename: str) -> None:
 async def _process_single_file(
     file: UploadFile,
     custom_categories: list[dict] | None = None,
+    rule_categories: list[Category] | None = None,
 ) -> tuple[StatementResult, int]:
     """Process a single file (PDF or image). Returns (result, bytes_processed)."""
     contents = await file.read()
@@ -88,11 +93,19 @@ async def _process_single_file(
     ext = _get_extension(filename)
 
     if ext == ".pdf":
-        return await _process_pdf(contents, filename, custom_categories)
+        result = await _process_pdf(contents, filename, custom_categories)
     elif ext in SPREADSHEET_EXTENSIONS:
-        return await _process_spreadsheet(contents, filename, ext, custom_categories)
+        result = await _process_spreadsheet(contents, filename, ext, custom_categories)
     else:
-        return await _process_image(contents, filename, custom_categories)
+        result = await _process_image(contents, filename, custom_categories)
+
+    # Apply category rules as post-processing overrides (safety net)
+    if rule_categories:
+        stmt_result, bts = result
+        stmt_result.transactions = apply_rules(stmt_result.transactions, rule_categories)
+        return (stmt_result, bts)
+
+    return result
 
 
 async def _process_pdf(
@@ -117,8 +130,7 @@ async def _process_pdf(
         if text.strip() and not is_scanned_pdf(tmp_path):
             # --- Text PDF path ---
             transactions = await parse_transactions(
-                text, filename, custom_categories=custom_categories
-            )
+                text, filename, custom_categories=custom_categories            )
             if settings.mock_mode:
                 transactions = categorize_transactions(transactions)
 
@@ -155,8 +167,7 @@ async def _process_pdf(
                     optimize_image(img_path)
 
                 transactions = await parse_transactions_from_images(
-                    temp_images, filename, custom_categories=custom_categories
-                )
+                    temp_images, filename, custom_categories=custom_categories                )
                 if settings.mock_mode:
                     transactions = categorize_transactions(transactions)
 
@@ -232,8 +243,7 @@ async def _process_image(
                 transactions = []
             else:
                 transactions = await parse_transactions(
-                    docai_text, filename, custom_categories=custom_categories
-                )
+                    docai_text, filename, custom_categories=custom_categories                )
                 if settings.mock_mode:
                     transactions = categorize_transactions(transactions)
 
@@ -242,8 +252,7 @@ async def _process_image(
         else:
             # Fall back to Vision path (image already optimized above)
             transactions = await parse_transactions_from_images(
-                [img_path], filename, custom_categories=custom_categories
-            )
+                [img_path], filename, custom_categories=custom_categories            )
             if settings.mock_mode:
                 transactions = categorize_transactions(transactions)
 
@@ -356,6 +365,7 @@ async def upload_statements(
     current_user: CurrentUser,
     files: list[UploadFile] = File(...),
     categories: str = Form(None),
+    category_group_id: str = Form(None),
     session: AsyncSession = Depends(get_session),
 ):
     if not files:
@@ -372,7 +382,40 @@ async def upload_statements(
             )
 
     custom_categories: list[dict] | None = None
-    if categories:
+    rule_categories: list[Category] | None = None
+
+    # Load categories from group if specified, otherwise try active group
+    group: CategoryGroup | None = None
+    if category_group_id:
+        try:
+            gid = uuid.UUID(category_group_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid category_group_id")
+        result = await session.execute(
+            select(CategoryGroup)
+            .where(CategoryGroup.id == gid, CategoryGroup.user_id == current_user.id)
+            .options(selectinload(CategoryGroup.categories).selectinload(Category.rules))
+        )
+        group = result.scalar_one_or_none()
+    else:
+        # Try to find the user's active group
+        result = await session.execute(
+            select(CategoryGroup)
+            .where(CategoryGroup.user_id == current_user.id, CategoryGroup.is_active == True)
+            .options(selectinload(CategoryGroup.categories).selectinload(Category.rules))
+        )
+        group = result.scalar_one_or_none()
+
+    if group:
+        # Build custom_categories for LLM prompt from group
+        custom_categories = [
+            {"name": c.name, "description": c.description or ""}
+            for c in sorted(group.categories, key=lambda c: c.sort_order)
+        ]
+        # Categories with rules for post-processing (applied after AI)
+        rule_categories = [c for c in group.categories if c.rules]
+    elif categories:
+        # Backward compatibility: use raw JSON categories from form
         try:
             custom_categories = json.loads(categories)
         except json.JSONDecodeError:
@@ -381,7 +424,11 @@ async def upload_statements(
     # Process files sequentially to avoid Claude API rate limits
     results = []
     for f in files:
-        results.append(await _process_single_file(f, custom_categories=custom_categories))
+        results.append(await _process_single_file(
+            f,
+            custom_categories=custom_categories,
+            rule_categories=rule_categories,
+        ))
 
     statements = [r[0] for r in results]
     total_bytes = sum(r[1] for r in results)

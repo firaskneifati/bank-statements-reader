@@ -6,7 +6,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, numbers
 
 from app.models.transaction import Transaction
 
-HEADERS = ["Date", "Posting Date", "Description", "Spent", "Received", "Balance", "Category"]
+HEADERS = ["Date", "Posting Date", "Description", "Spent", "Received", "Balance", "Category", "Source", "File"]
 
 
 def generate_csv(transactions: list[Transaction]) -> io.StringIO:
@@ -17,6 +17,7 @@ def generate_csv(transactions: list[Transaction]) -> io.StringIO:
         amount = abs(tx.amount)
         spent = f"{amount:.2f}" if tx.type == "debit" else ""
         received = f"{amount:.2f}" if tx.type == "credit" else ""
+        source_label = "AI" if tx.category_source == "ai" else "Rule" if tx.category_source == "rule" else "Manual"
         writer.writerow([
             tx.date,
             tx.posting_date or "",
@@ -25,6 +26,8 @@ def generate_csv(transactions: list[Transaction]) -> io.StringIO:
             received,
             f"{tx.balance:.2f}" if tx.balance is not None else "",
             tx.category,
+            source_label,
+            tx.source or "",
         ])
     output.seek(0)
     return output
@@ -88,6 +91,10 @@ def generate_excel(transactions: list[Transaction]) -> io.BytesIO:
             ws.cell(row=row_idx, column=6, value="").fill = fill
 
         ws.cell(row=row_idx, column=7, value=tx.category).fill = fill
+
+        source_label = "AI" if tx.category_source == "ai" else "Rule" if tx.category_source == "rule" else "Manual"
+        ws.cell(row=row_idx, column=8, value=source_label).fill = fill
+        ws.cell(row=row_idx, column=9, value=tx.source or "").fill = fill
 
     # Auto-fit column widths
     for col in ws.columns:

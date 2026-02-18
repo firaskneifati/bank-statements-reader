@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.limiter import limiter
-from app.routers import upload, export, auth, usage, audit_router, billing, contact
+from app.routers import upload, export, auth, usage, audit_router, billing, contact, categories
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.origins_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -69,6 +69,7 @@ app.include_router(usage.router, prefix="/api/v1")
 app.include_router(audit_router.router, prefix="/api/v1", tags=["audit"])
 app.include_router(billing.router, prefix="/api/v1", tags=["billing"])
 app.include_router(contact.router, prefix="/api/v1", tags=["contact"])
+app.include_router(categories.router, prefix="/api/v1", tags=["categories"])
 
 os.makedirs(settings.upload_dir, exist_ok=True)
 

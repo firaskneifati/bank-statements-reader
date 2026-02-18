@@ -57,7 +57,6 @@ class Organization(SQLModel, table=True):
     clients: list["Client"] = Relationship(back_populates="organization")
     uploads: list["Upload"] = Relationship(back_populates="organization")
     export_logs: list["ExportLog"] = Relationship(back_populates="organization")
-    category_templates: list["CategoryTemplate"] = Relationship(back_populates="organization")
 
 
 # ── User ─────────────────────────────────────────────────────────────
@@ -79,6 +78,7 @@ class User(SQLModel, table=True):
     organization: Organization = Relationship(back_populates="users")
     uploads: list["Upload"] = Relationship(back_populates="uploaded_by")
     export_logs: list["ExportLog"] = Relationship(back_populates="user")
+    category_groups: list["CategoryGroup"] = Relationship(back_populates="user")
 
 
 # ── Client ───────────────────────────────────────────────────────────
@@ -130,18 +130,53 @@ class ExportLog(SQLModel, table=True):
     user: User = Relationship(back_populates="export_logs")
 
 
-# ── CategoryTemplate ─────────────────────────────────────────────────
-class CategoryTemplate(SQLModel, table=True):
-    __tablename__ = "category_templates"
+# ── CategoryGroup ────────────────────────────────────────────────────
+class CategoryGroup(SQLModel, table=True):
+    __tablename__ = "category_groups"
 
     id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
-    org_id: uuid.UUID = Field(foreign_key="organizations.id", index=True)
+    user_id: uuid.UUID = Field(foreign_key="users.id", index=True)
+    name: str
+    is_active: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=_now)
+    updated_at: datetime = Field(default_factory=_now)
+
+    user: User = Relationship(back_populates="category_groups")
+    categories: list["Category"] = Relationship(
+        back_populates="group",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+
+
+# ── Category ────────────────────────────────────────────────────────
+class Category(SQLModel, table=True):
+    __tablename__ = "categories"
+
+    id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
+    group_id: uuid.UUID = Field(foreign_key="category_groups.id", index=True)
     name: str
     description: str | None = None
     sort_order: int = Field(default=0)
     created_at: datetime = Field(default_factory=_now)
 
-    organization: Organization = Relationship(back_populates="category_templates")
+    group: CategoryGroup = Relationship(back_populates="categories")
+    rules: list["CategoryRule"] = Relationship(
+        back_populates="category",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+
+
+# ── CategoryRule ────────────────────────────────────────────────────
+class CategoryRule(SQLModel, table=True):
+    __tablename__ = "category_rules"
+
+    id: uuid.UUID = Field(default_factory=_uuid, primary_key=True)
+    category_id: uuid.UUID = Field(foreign_key="categories.id", index=True)
+    rule_type: str  # "include" or "exclude"
+    pattern: str
+    created_at: datetime = Field(default_factory=_now)
+
+    category: Category = Relationship(back_populates="rules")
 
 
 # ── AuditLog ────────────────────────────────────────────────────────

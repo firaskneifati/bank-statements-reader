@@ -3,18 +3,18 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { FileUploader } from "@/components/FileUploader";
-import { CategoryManager } from "@/components/CategoryManager";
 import { TransactionTable } from "@/components/TransactionTable";
 import { CategorySummary } from "@/components/CategorySummary";
 import { ExportButtons } from "@/components/ExportButtons";
 import { UsageBanner } from "@/components/UsageBanner";
 import { UploadProgress, UploadProgressData } from "@/components/UploadProgress";
-import { uploadSingleStatement, fetchUsage } from "@/lib/api-client";
-import { Transaction, UploadResponse, UsageStats, CategoryConfig, DEFAULT_CATEGORIES } from "@/lib/types";
+import { AutoRuleToast } from "@/components/AutoRuleToast";
+import { uploadSingleStatement, fetchUsage, fetchCategoryGroups, updateCategoryGroup, applyRules } from "@/lib/api-client";
+import { Transaction, UploadResponse, UsageStats, CategoryConfig, DEFAULT_CATEGORIES, CategoryGroup } from "@/lib/types";
 import { Header } from "@/components/Header";
-import { AlertCircle, RotateCcw, Trash2, FileText, Plus, X } from "lucide-react";
+import { AlertCircle, RotateCcw, Trash2, FileText, Plus, X, Tag, Settings, Star, RefreshCw } from "lucide-react";
+import Link from "next/link";
 
-const STORAGE_KEY = "bank-statement-categories";
 const SESSION_DATA_KEY = "bank-statement-results";
 
 const STATEMENT_COLORS = [
@@ -32,18 +32,6 @@ const STATEMENT_COLORS = [
   { bg: "bg-indigo-100", text: "text-indigo-700", border: "border-indigo-300", activeBg: "bg-indigo-600" },
 ];
 
-function loadCategories(): CategoryConfig[] {
-  if (typeof window === "undefined") return DEFAULT_CATEGORIES;
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {}
-  return DEFAULT_CATEGORIES;
-}
-
 type AppState = "idle" | "uploading" | "results" | "error";
 
 export default function Home() {
@@ -51,13 +39,31 @@ export default function Home() {
   const [state, setState] = useState<AppState>("idle");
   const [data, setData] = useState<UploadResponse | null>(null);
   const [error, setError] = useState<string>("");
-  const [categories, setCategories] = useState<CategoryConfig[]>(DEFAULT_CATEGORIES);
   const [usage, setUsage] = useState<UsageStats | null>(null);
   const [usageLoading, setUsageLoading] = useState(true);
   const [sortedTransactions, setSortedTransactions] = useState<Transaction[]>([]);
 
+  // Category groups
+  const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([]);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [groupsLoading, setGroupsLoading] = useState(true);
+
+  // Auto-rule toast
+  const [ruleToast, setRuleToast] = useState<{
+    description: string;
+    newCategory: string;
+    categoryId: string;
+    oldCategory: string;
+    categorySource: "ai" | "rule" | "manual" | undefined;
+  } | null>(null);
+
+  const activeGroup = categoryGroups.find((g) => g.id === activeGroupId);
+  const categoryNames = useMemo(
+    () => activeGroup?.categories.map((c) => c.name) ?? DEFAULT_CATEGORIES.map((c) => c.name),
+    [activeGroup]
+  );
+
   useEffect(() => {
-    setCategories(loadCategories());
     try {
       const stored = sessionStorage.getItem(SESSION_DATA_KEY);
       if (stored) {
@@ -84,14 +90,26 @@ export default function Home() {
       .then(setUsage)
       .catch(() => {})
       .finally(() => setUsageLoading(false));
+    fetchCategoryGroups()
+      .then((groups) => {
+        setCategoryGroups(groups);
+        const active = groups.find((g) => g.is_active);
+        if (active) setActiveGroupId(active.id);
+        else if (groups.length > 0) setActiveGroupId(groups[0].id);
+      })
+      .catch(() => {})
+      .finally(() => setGroupsLoading(false));
   }, [sessionStatus]);
 
-  const handleCategoriesChange = (updated: CategoryConfig[]) => {
-    setCategories(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  const handleSwitchGroup = async (groupId: string) => {
+    setActiveGroupId(groupId);
+    try {
+      await updateCategoryGroup(groupId, { is_active: true });
+      setCategoryGroups((prev) =>
+        prev.map((g) => ({ ...g, is_active: g.id === groupId }))
+      );
+    } catch {}
   };
-
-  const categoryNames = useMemo(() => categories.map((c) => c.name), [categories]);
 
   const [addingMore, setAddingMore] = useState(false);
   const [showAddDropzone, setShowAddDropzone] = useState(false);
@@ -128,7 +146,7 @@ export default function Home() {
       setUploadProgress({ ...progress });
 
       try {
-        const result = await uploadSingleStatement(file, categories);
+        const result = await uploadSingleStatement(file, undefined, activeGroupId ?? undefined);
         allStatements.push(...result.statements);
         if (result.usage) { latestUsage = result.usage; setUsage(result.usage); }
         if (result.mock_mode) mockMode = true;
@@ -181,7 +199,7 @@ export default function Home() {
       setUploadProgress({ ...progress });
 
       try {
-        const result = await uploadSingleStatement(file, categories);
+        const result = await uploadSingleStatement(file, undefined, activeGroupId ?? undefined);
         setData((prev) => {
           if (!prev) return result;
           return {
@@ -266,8 +284,63 @@ export default function Home() {
   }, []);
 
   const handleCategoryChange = useCallback((stmtIndex: number, txIndex: number, newCategory: string) => {
+    // Get the transaction before changing it
+    const tx = data?.statements[stmtIndex]?.transactions[txIndex];
+    const oldCategory = tx?.category ?? "";
+    const source = tx?.category_source;
+
     handleFieldChange(stmtIndex, txIndex, "category", newCategory);
-  }, [handleFieldChange]);
+    handleFieldChange(stmtIndex, txIndex, "category_source", "manual");
+
+    // Suggest auto-rule if category was changed and we have an active group
+    if (tx && activeGroup && newCategory !== oldCategory && (source === "ai" || source === "rule")) {
+      const targetCat = activeGroup.categories.find(
+        (c) => c.name === newCategory
+      );
+      if (targetCat) {
+        setRuleToast({
+          description: tx.description,
+          newCategory,
+          categoryId: targetCat.id,
+          oldCategory,
+          categorySource: source,
+        });
+      }
+    }
+  }, [handleFieldChange, data, activeGroup]);
+
+  const [reprocessing, setReprocessing] = useState(false);
+
+  const handleReprocessRules = useCallback(async () => {
+    if (!activeGroupId || !data) return;
+    setReprocessing(true);
+    try {
+      const allTxs = data.statements.flatMap((s) => s.transactions);
+      const result = await applyRules(activeGroupId, allTxs);
+
+      // Only update category + category_source from result, preserve all other fields
+      setData((prev) => {
+        if (!prev) return prev;
+        let offset = 0;
+        const updatedStatements = prev.statements.map((s) => {
+          const updatedTxs = s.transactions.map((tx, i) => ({
+            ...tx,
+            category: result.transactions[offset + i]?.category ?? tx.category,
+            category_source: result.transactions[offset + i]?.category_source ?? tx.category_source,
+          }));
+          offset += s.transactions.length;
+          return { ...s, transactions: updatedTxs };
+        });
+        return { ...prev, statements: updatedStatements };
+      });
+
+      alert(`Rules reprocessed: ${result.rules_applied} transaction${result.rules_applied !== 1 ? "s" : ""} matched rules.`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to reprocess rules");
+    } finally {
+      setReprocessing(false);
+    }
+  }, [activeGroupId, data]);
 
   const visibleStatements = selectedStatement !== null
     ? [data?.statements[selectedStatement]].filter(Boolean)
@@ -301,11 +374,86 @@ export default function Home() {
     <Header />
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       <UsageBanner usage={usage} loading={usageLoading} />
+      {/* Category Group Selector — visible in idle + results */}
+      {(state === "idle" || state === "results") && !groupsLoading && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Tag className="h-5 w-5 text-gray-500" />
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700">Category Group</h3>
+                {categoryGroups.length > 0 ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <select
+                      value={activeGroupId ?? ""}
+                      onChange={(e) => handleSwitchGroup(e.target.value)}
+                      className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {categoryGroups.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name} ({g.categories.length} categories
+                          {g.categories.reduce((s, c) => s + c.rules.length, 0) > 0
+                            ? `, ${g.categories.reduce((s, c) => s + c.rules.length, 0)} rules`
+                            : ""})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    No groups yet — using default categories.{" "}
+                    <Link href="/settings/categories" className="text-blue-600 hover:underline">Create one</Link>
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {state === "results" && activeGroup && (
+                <button
+                  onClick={handleReprocessRules}
+                  disabled={reprocessing}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${reprocessing ? "animate-spin" : ""}`} />
+                  {reprocessing ? "Reprocessing..." : "Reprocess Rules"}
+                </button>
+              )}
+              <Link
+                href="/settings/categories"
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                <Settings className="h-3.5 w-3.5" />
+                Manage
+              </Link>
+            </div>
+          </div>
+          {activeGroup && activeGroup.categories.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100">
+              {[...activeGroup.categories]
+                .sort((a, b) => {
+                  if (a.name.toLowerCase() === "other") return -1;
+                  if (b.name.toLowerCase() === "other") return 1;
+                  return a.name.localeCompare(b.name);
+                })
+                .map((cat) => (
+                <span
+                  key={cat.id}
+                  title={cat.description || cat.name}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-full"
+                >
+                  {cat.name}
+                  {cat.rules.length > 0 && (
+                    <span className="text-[10px] text-blue-500 font-semibold">{cat.rules.length}r</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {state === "idle" && (
-        <>
-          <CategoryManager categories={categories} onChange={handleCategoriesChange} />
-          <FileUploader onUpload={handleUpload} />
-        </>
+        <FileUploader onUpload={handleUpload} />
       )}
 
       {state === "uploading" && <UploadProgress progress={uploadProgress} onCancel={() => { cancelRef.current = true; }} />}
@@ -364,10 +512,10 @@ export default function Home() {
             <div className="flex flex-wrap gap-2 min-w-0">
               <button
                 onClick={() => setSelectedStatement(null)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors border ${
                   selectedStatement === null
-                    ? "bg-blue-600 text-white"
-                    : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 All ({data.statements.reduce((sum, s) => sum + s.transaction_count, 0)})
@@ -378,10 +526,10 @@ export default function Home() {
                   <button
                     key={i}
                     onClick={() => setSelectedStatement(i)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors max-w-full ${
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors max-w-full border ${
                       selectedStatement === i
-                        ? `${c.activeBg} text-white`
-                        : `${c.bg} ${c.text} border ${c.border} hover:opacity-80`
+                        ? `${c.activeBg} text-white border-transparent`
+                        : `${c.bg} ${c.text} ${c.border} hover:opacity-80`
                     }`}
                   >
                     <FileText className="h-3.5 w-3.5 flex-shrink-0" />
@@ -480,7 +628,6 @@ export default function Home() {
             />
           )}
 
-          <CategoryManager categories={categories} onChange={handleCategoriesChange} />
           <TransactionTable
             transactions={filteredTransactions}
             categories={categoryNames}
@@ -490,6 +637,25 @@ export default function Home() {
           />
           <CategorySummary transactions={filteredTransactions} />
         </>
+      )}
+
+      {/* Auto-rule toast */}
+      {ruleToast && (
+        <AutoRuleToast
+          description={ruleToast.description}
+          newCategory={ruleToast.newCategory}
+          categoryId={ruleToast.categoryId}
+          oldCategory={ruleToast.oldCategory}
+          categorySource={ruleToast.categorySource}
+          onCreated={() => {
+            setRuleToast(null);
+            // Reload groups to get updated rules
+            fetchCategoryGroups().then((groups) => {
+              setCategoryGroups(groups);
+            }).catch(() => {});
+          }}
+          onDismiss={() => setRuleToast(null)}
+        />
       )}
     </main>
     </>

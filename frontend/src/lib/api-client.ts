@@ -1,5 +1,5 @@
 import { getSession, signOut } from "next-auth/react";
-import { UploadResponse, ExportRequest, CategoryConfig, UsageStats, BillingStatus } from "./types";
+import { UploadResponse, ExportRequest, CategoryConfig, UsageStats, BillingStatus, CategoryGroup, SimilarityWarning, Transaction } from "./types";
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const session = await getSession();
@@ -23,11 +23,14 @@ async function handleResponse(response: Response, fallbackMsg: string): Promise<
 
 export async function uploadSingleStatement(
   file: File,
-  categories?: CategoryConfig[]
+  categories?: CategoryConfig[],
+  categoryGroupId?: string,
 ): Promise<UploadResponse> {
   const formData = new FormData();
   formData.append("files", file);
-  if (categories && categories.length > 0) {
+  if (categoryGroupId) {
+    formData.append("category_group_id", categoryGroupId);
+  } else if (categories && categories.length > 0) {
     formData.append("categories", JSON.stringify(categories));
   }
 
@@ -167,4 +170,137 @@ export async function exportTransactions(request: ExportRequest): Promise<void> 
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// ── Category Groups API ───────────────────────────────────────────
+
+export async function fetchCategoryGroups(): Promise<CategoryGroup[]> {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch("/api/v1/category-groups", {
+    headers: { ...authHeaders },
+  });
+  await handleResponse(response, "Failed to fetch category groups");
+  return response.json();
+}
+
+export async function createCategoryGroup(name: string): Promise<CategoryGroup> {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch("/api/v1/category-groups", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders },
+    body: JSON.stringify({ name }),
+  });
+  await handleResponse(response, "Failed to create category group");
+  return response.json();
+}
+
+export async function updateCategoryGroup(
+  id: string,
+  data: { name?: string; is_active?: boolean }
+): Promise<CategoryGroup> {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(`/api/v1/category-groups/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...authHeaders },
+    body: JSON.stringify(data),
+  });
+  await handleResponse(response, "Failed to update category group");
+  return response.json();
+}
+
+export async function deleteCategoryGroup(id: string): Promise<void> {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(`/api/v1/category-groups/${id}`, {
+    method: "DELETE",
+    headers: { ...authHeaders },
+  });
+  await handleResponse(response, "Failed to delete category group");
+}
+
+export async function addCategory(
+  groupId: string,
+  data: { name: string; description?: string }
+): Promise<{ category: CategoryGroup["categories"][0]; warning: SimilarityWarning | null }> {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(`/api/v1/category-groups/${groupId}/categories`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders },
+    body: JSON.stringify(data),
+  });
+  await handleResponse(response, "Failed to add category");
+  return response.json();
+}
+
+export async function updateCategory(
+  id: string,
+  data: { name?: string; description?: string }
+): Promise<{ category: CategoryGroup["categories"][0]; warning: SimilarityWarning | null }> {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(`/api/v1/categories/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...authHeaders },
+    body: JSON.stringify(data),
+  });
+  await handleResponse(response, "Failed to update category");
+  return response.json();
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(`/api/v1/categories/${id}`, {
+    method: "DELETE",
+    headers: { ...authHeaders },
+  });
+  await handleResponse(response, "Failed to delete category");
+}
+
+export async function addRule(
+  categoryId: string,
+  data: { rule_type: "include" | "exclude"; pattern: string }
+): Promise<{ rule: CategoryGroup["categories"][0]["rules"][0]; warning: SimilarityWarning | null }> {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(`/api/v1/categories/${categoryId}/rules`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders },
+    body: JSON.stringify(data),
+  });
+  await handleResponse(response, "Failed to add rule");
+  return response.json();
+}
+
+export async function updateRule(
+  id: string,
+  data: { rule_type?: "include" | "exclude"; pattern?: string }
+): Promise<{ rule: CategoryGroup["categories"][0]["rules"][0]; warning: SimilarityWarning | null }> {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(`/api/v1/rules/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...authHeaders },
+    body: JSON.stringify(data),
+  });
+  await handleResponse(response, "Failed to update rule");
+  return response.json();
+}
+
+export async function deleteRule(id: string): Promise<void> {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(`/api/v1/rules/${id}`, {
+    method: "DELETE",
+    headers: { ...authHeaders },
+  });
+  await handleResponse(response, "Failed to delete rule");
+}
+
+export async function applyRules(
+  groupId: string,
+  transactions: Transaction[]
+): Promise<{ transactions: Transaction[]; rules_applied: number }> {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(`/api/v1/category-groups/${groupId}/apply-rules`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders },
+    body: JSON.stringify({ transactions }),
+  });
+  await handleResponse(response, "Failed to apply rules");
+  return response.json();
 }
