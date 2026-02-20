@@ -23,6 +23,7 @@ class Organization(SQLModel, table=True):
     stripe_subscription_id: str | None = None
     stripe_price_id: str | None = None
     plan: str = Field(default="free")
+    checkout_stage: str | None = Field(default=None)
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 

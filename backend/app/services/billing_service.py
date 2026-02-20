@@ -94,7 +94,7 @@ async def create_checkout_session(
         line_items=[{"price": price_id, "quantity": 1}],
         success_url=success_url,
         cancel_url=cancel_url,
-        metadata={"org_id": str(org.id)},
+        metadata={"org_id": str(org.id), "plan": plan},
     )
     return checkout.url
 

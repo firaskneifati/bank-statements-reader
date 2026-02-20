@@ -11,7 +11,7 @@ from sqlmodel import select
 from app.config import settings
 from app.auth.dependencies import CurrentUser
 from app.db.engine import get_session
-from app.db.models import Organization
+from app.db.models import Organization, User
 from app.services.billing_service import (
     PLAN_PAGE_LIMITS,
     create_checkout_session,
@@ -73,6 +73,11 @@ async def billing_checkout(
             detail="You already have an active subscription. Use the customer portal to change plans.",
         )
 
+    org.checkout_stage = "started"
+    session.add(org)
+    await session.commit()
+    await session.refresh(org)
+
     url = await create_checkout_session(
         org=org,
         user=current_user,
@@ -81,6 +86,19 @@ async def billing_checkout(
         cancel_url=body.cancel_url,
         session=session,
     )
+
+    _notify_checkout(
+        subject=f"Checkout started: {current_user.full_name} ({body.plan})",
+        body=(
+            f"<h3>Checkout started</h3>"
+            f"<p><strong>Name:</strong> {current_user.full_name}</p>"
+            f"<p><strong>Email:</strong> {current_user.email}</p>"
+            f"<p><strong>Organization:</strong> {org.name}</p>"
+            f"<p><strong>Plan:</strong> {body.plan}</p>"
+            f"<p>User was redirected to the Stripe checkout page.</p>"
+        ),
+    )
+
     return UrlResponse(url=url)
 
 
@@ -208,6 +226,8 @@ async def billing_webhook(
 
     if event_type == "checkout.session.completed":
         await _handle_checkout_completed(data, session)
+    elif event_type == "checkout.session.expired":
+        await _handle_checkout_expired(data, session)
     elif event_type == "customer.subscription.updated":
         await _handle_subscription_updated(data, session)
     elif event_type == "customer.subscription.deleted":
@@ -216,6 +236,33 @@ async def billing_webhook(
         await _handle_payment_failed(data, session)
 
     return {"received": True}
+
+
+# ── Admin notification helper ────────────────────────────────────────
+def _notify_checkout(subject: str, body: str) -> None:
+    """Send a fire-and-forget admin email about a checkout event."""
+    if not settings.resend_api_key or not settings.contact_email:
+        return
+    try:
+        import resend
+
+        resend.api_key = settings.resend_api_key
+        resend.Emails.send({
+            "from": "BankRead <no-reply@bankread.ai>",
+            "to": [settings.contact_email],
+            "subject": subject,
+            "html": body,
+        })
+    except Exception:
+        logger.exception("Failed to send checkout notification email")
+
+
+async def _find_org_owner(org_id, session: AsyncSession) -> User | None:
+    """Find the owner user of an organization."""
+    result = await session.execute(
+        select(User).where(User.org_id == org_id, User.role == "owner")
+    )
+    return result.scalar_one_or_none()
 
 
 # ── Webhook handlers ─────────────────────────────────────────────────
@@ -234,6 +281,61 @@ async def _handle_checkout_completed(data: dict, session: AsyncSession) -> None:
     stripe.api_key = settings.stripe_secret_key
     subscription = stripe.Subscription.retrieve(subscription_id)
     await sync_subscription(org, subscription, session)
+
+    org.checkout_stage = "completed"
+    session.add(org)
+    await session.commit()
+
+    plan = data.get("metadata", {}).get("plan", org.plan)
+    owner = await _find_org_owner(org.id, session)
+    owner_name = owner.full_name if owner else "Unknown"
+    owner_email = owner.email if owner else "Unknown"
+
+    _notify_checkout(
+        subject=f"Checkout completed: {owner_name} ({plan})",
+        body=(
+            f"<h3>Payment successful</h3>"
+            f"<p><strong>Name:</strong> {owner_name}</p>"
+            f"<p><strong>Email:</strong> {owner_email}</p>"
+            f"<p><strong>Organization:</strong> {org.name}</p>"
+            f"<p><strong>Plan:</strong> {plan}</p>"
+            f"<p>Subscription is now active.</p>"
+        ),
+    )
+
+
+async def _handle_checkout_expired(data: dict, session: AsyncSession) -> None:
+    """Handle abandoned checkout — session expired without completing."""
+    customer_id = data.get("customer")
+    if not customer_id:
+        return
+
+    org = await _find_org_by_customer(customer_id, session)
+    if not org:
+        logger.warning("Checkout expired for unknown customer: %s", customer_id)
+        return
+
+    org.checkout_stage = "abandoned"
+    session.add(org)
+    await session.commit()
+
+    plan = data.get("metadata", {}).get("plan", "unknown")
+    owner = await _find_org_owner(org.id, session)
+    owner_name = owner.full_name if owner else "Unknown"
+    owner_email = owner.email if owner else "Unknown"
+
+    _notify_checkout(
+        subject=f"Checkout abandoned: {owner_name} ({plan})",
+        body=(
+            f"<h3>Checkout abandoned</h3>"
+            f"<p><strong>Name:</strong> {owner_name}</p>"
+            f"<p><strong>Email:</strong> {owner_email}</p>"
+            f"<p><strong>Organization:</strong> {org.name}</p>"
+            f"<p><strong>Plan:</strong> {plan}</p>"
+            f"<p>User started checkout but never completed payment. "
+            f"The Stripe session expired.</p>"
+        ),
+    )
 
 
 async def _handle_subscription_updated(data: dict, session: AsyncSession) -> None:
@@ -267,9 +369,37 @@ async def _handle_subscription_deleted(data: dict, session: AsyncSession) -> Non
 
 
 async def _handle_payment_failed(data: dict, session: AsyncSession) -> None:
-    """Log payment failure for visibility."""
+    """Log payment failure and notify admin."""
     customer_id = data.get("customer")
     logger.warning("Payment failed for customer: %s", customer_id)
+
+    if not customer_id:
+        return
+
+    org = await _find_org_by_customer(customer_id, session)
+    if not org:
+        return
+
+    org.checkout_stage = "payment_failed"
+    session.add(org)
+    await session.commit()
+
+    owner = await _find_org_owner(org.id, session)
+    owner_name = owner.full_name if owner else "Unknown"
+    owner_email = owner.email if owner else "Unknown"
+
+    _notify_checkout(
+        subject=f"Payment failed: {owner_name} ({org.plan})",
+        body=(
+            f"<h3>Payment failed</h3>"
+            f"<p><strong>Name:</strong> {owner_name}</p>"
+            f"<p><strong>Email:</strong> {owner_email}</p>"
+            f"<p><strong>Organization:</strong> {org.name}</p>"
+            f"<p><strong>Current plan:</strong> {org.plan}</p>"
+            f"<p>Stripe invoice payment failed. This could be a declined card "
+            f"or insufficient funds.</p>"
+        ),
+    )
 
 
 async def _find_org_by_customer(
