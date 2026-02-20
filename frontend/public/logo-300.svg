@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <!-- Background circle for clean social media display -->
+  <rect width="300" height="300" rx="60" fill="#2563eb"/>
+  <!-- Document shape -->
+  <rect x="75" y="45" width="150" height="210" rx="18" fill="#ffffff"/>
+  <!-- Header bar -->
+  <rect x="95" y="65" width="110" height="16" rx="8" fill="#93c5fd"/>
+  <!-- Dollar sign -->
+  <text x="150" y="200" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="120" fill="#2563eb">$</text>
+</svg>

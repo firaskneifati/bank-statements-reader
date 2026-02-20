@@ -3,6 +3,7 @@ import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
 import { CookieBanner } from "@/components/CookieBanner";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
+import { LinkedInInsightTag } from "@/components/LinkedInInsightTag";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -75,6 +76,7 @@ export default async function RootLayout({
           {children}
           <CookieBanner />
           <GoogleAnalytics />
+          <LinkedInInsightTag />
         </SessionProvider>
       </body>
     </html>
