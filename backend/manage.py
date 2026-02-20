@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, func
 
 from app.db.engine import async_session_factory
-from app.db.models import Organization, User, Upload, ExportLog, AuditLog, Client, CategoryTemplate
+from app.db.models import Organization, User, Upload, ExportLog, AuditLog, Client, CategoryGroup
 from app.auth.password import hash_password
 
 
@@ -80,6 +80,7 @@ async def delete_user(email: str):
         uid, oid = user.id, user.org_id
 
         # Delete child rows referencing user
+        await session.execute(CategoryGroup.__table__.delete().where(CategoryGroup.user_id == uid))
         await session.execute(AuditLog.__table__.delete().where(AuditLog.user_id == uid))
         await session.execute(ExportLog.__table__.delete().where(ExportLog.user_id == uid))
         await session.execute(Upload.__table__.delete().where(Upload.uploaded_by_user_id == uid))
@@ -89,7 +90,6 @@ async def delete_user(email: str):
         remaining = await session.execute(select(func.count(User.id)).where(User.org_id == oid))
         if remaining.scalar() == 0:
             await session.execute(AuditLog.__table__.delete().where(AuditLog.org_id == oid))
-            await session.execute(CategoryTemplate.__table__.delete().where(CategoryTemplate.org_id == oid))
             await session.execute(Client.__table__.delete().where(Client.org_id == oid))
             await session.execute(Organization.__table__.delete().where(Organization.id == oid))
 
