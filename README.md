@@ -11,7 +11,7 @@ A SaaS app that parses bank statements (PDFs, scanned documents, and photos) int
 - **Anti-hallucination prompts** — LLM instructed to return empty results rather than guess unclear content
 - **Editable transaction table** — click any cell to edit (date, description, amount, type, balance, category)
 - **Chequing & credit card support** with smart column display (posting date auto-detected)
-- **AI categorization** via Claude Haiku 4.5 with 16 built-in categories or custom categories
+- **AI categorization** via Claude Haiku 4.5 with category groups, custom categories, and include/exclude keyword rules
 - **CSV & Excel export** with styled, color-coded output
 - **Authentication** — email/password with optional TOTP-based 2FA (Google Authenticator, Authy, etc.)
 - **Terms of Service acceptance** required at sign-up with liability disclaimer
@@ -37,7 +37,7 @@ Browser (Next.js :4001)                    FastAPI Backend (:8000)
 │  Table + Export  │                    │  Export (CSV/XLSX)     │
 └──────────────────┘                    └────────────────────────┘
                          │
-                    PostgreSQL 16 (users, orgs, usage, audit logs)
+                    PostgreSQL 16 (users, orgs, usage, categories, audit logs)
 ```
 
 ### Processing Pipeline
@@ -104,6 +104,12 @@ docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
 | POST | `/api/v1/upload` | Bearer | Upload PDFs or images for parsing |
 | GET | `/api/v1/usage` | Bearer | Get usage stats (text/image breakdown) |
 | POST | `/api/v1/export` | Bearer | Export transactions (CSV/XLSX) |
+| GET | `/api/v1/categories/groups` | Bearer | List category groups |
+| POST | `/api/v1/categories/groups` | Bearer | Create category group with categories and rules |
+| PUT | `/api/v1/categories/groups/{id}` | Bearer | Update a category group |
+| DELETE | `/api/v1/categories/groups/{id}` | Bearer | Delete a category group |
+| POST | `/api/v1/categories/groups/{id}/activate` | Bearer | Set active category group |
+| POST | `/api/v1/categories/reprocess` | Bearer | Reprocess transactions with active group's rules |
 
 ## Project Structure
 
@@ -118,7 +124,7 @@ bank-statements-reader/
 ├── backend/
 │   ├── Dockerfile
 │   ├── requirements.txt
-│   ├── manage.py                   # CLI: create-user, usage, delete-user
+│   ├── manage.py                   # CLI: create-user, delete-user, set-limit, grant-pages, usage
 │   ├── alembic.ini
 │   └── app/
 │       ├── config.py               # Pydantic settings (incl. Document AI)
@@ -131,11 +137,12 @@ bank-statements-reader/
 │       │   └── schemas.py          # Request/response models
 │       ├── db/
 │       │   ├── engine.py           # Async SQLAlchemy engine
-│       │   ├── models.py           # SQLModel tables (User, Org, Upload, AuditLog)
+│       │   ├── models.py           # SQLModel tables (User, Org, Upload, CategoryGroup, CategoryRule, AuditLog)
 │       │   └── migrations/         # Alembic migrations
 │       ├── routers/
 │       │   ├── auth.py             # Auth + 2FA endpoints
 │       │   ├── upload.py           # PDF/image upload + parsing + confidence gating
+│       │   ├── categories.py       # Category groups, rules, activate, reprocess
 │       │   ├── usage.py            # Usage stats endpoint
 │       │   └── export.py           # CSV/Excel export
 │       └── services/
@@ -143,7 +150,9 @@ bank-statements-reader/
 │           ├── image_service.py    # Image conversion, optimization, validation
 │           ├── docai_service.py    # Google Document AI OCR + confidence scoring
 │           ├── llm_service.py      # Claude Haiku (text) + Sonnet (vision) with anti-hallucination prompts
-│           ├── categorization_service.py  # Mock mode categorization
+│           ├── categorization_service.py  # AI + rule-based categorization
+│           ├── rule_engine.py      # Include/exclude keyword rule matching
+│           ├── spreadsheet_service.py  # CSV/XLSX upload parsing
 │           ├── audit.py            # Audit logging
 │           └── export_service.py   # CSV/XLSX file generation
 ├── frontend/
@@ -169,7 +178,7 @@ bank-statements-reader/
 │           ├── Header.tsx          # Nav with settings + sign out
 │           ├── FileUploader.tsx    # Drag-and-drop zone with mobile tips
 │           ├── TransactionTable.tsx # Editable, sortable results table
-│           ├── CategoryManager.tsx # Custom category editor
+│           ├── CategoryManager.tsx # Category groups with include/exclude rules
 │           ├── CategorySummary.tsx # Spending breakdown by category
 │           ├── UsageBanner.tsx     # Plan usage + text/image page breakdown
 │           ├── UploadProgress.tsx  # Per-file upload progress
