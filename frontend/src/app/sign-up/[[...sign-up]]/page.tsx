@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -17,6 +17,22 @@ export default function SignUpPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [referralSource, setReferralSource] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const data: Record<string, string> = {};
+    const utmSource = params.get("utm_source");
+    const utmMedium = params.get("utm_medium");
+    const utmCampaign = params.get("utm_campaign");
+    if (utmSource) data.utm_source = utmSource;
+    if (utmMedium) data.utm_medium = utmMedium;
+    if (utmCampaign) data.utm_campaign = utmCampaign;
+    if (document.referrer) data.referrer = document.referrer;
+    if (Object.keys(data).length > 0) {
+      setReferralSource(JSON.stringify(data));
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +48,7 @@ export default function SignUpPage() {
           password,
           full_name: fullName,
           organization_name: orgName || undefined,
+          referral_source: referralSource || undefined,
         }),
       });
 

@@ -29,6 +29,8 @@ from app.auth.schemas import (
 from app.config import settings
 from app.services.audit import log_audit
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
@@ -64,6 +66,7 @@ async def register(request: Request, body: RegisterRequest, session: AsyncSessio
         full_name=body.full_name,
         role="owner",
         org_id=org.id,
+        referral_source=body.referral_source,
     )
     session.add(user)
     await session.commit()
@@ -71,6 +74,48 @@ async def register(request: Request, body: RegisterRequest, session: AsyncSessio
 
     token = create_access_token({"sub": str(user.id)})
     await log_audit(session, "register", request, user_id=user.id, org_id=org.id, detail=body.email)
+
+    # Fire-and-forget admin notification email
+    if settings.resend_api_key and settings.contact_email:
+        try:
+            import json
+            import resend
+
+            resend.api_key = settings.resend_api_key
+
+            # Parse referral source for readable display
+            referral_parts = []
+            if body.referral_source:
+                try:
+                    ref = json.loads(body.referral_source)
+                    if ref.get("utm_source"):
+                        referral_parts.append(f"Source: {ref['utm_source']}")
+                    if ref.get("utm_medium"):
+                        referral_parts.append(f"Medium: {ref['utm_medium']}")
+                    if ref.get("utm_campaign"):
+                        referral_parts.append(f"Campaign: {ref['utm_campaign']}")
+                    if ref.get("referrer"):
+                        referral_parts.append(f"Referrer: {ref['referrer']}")
+                except (json.JSONDecodeError, TypeError):
+                    referral_parts.append(f"Raw: {body.referral_source}")
+            referral_display = "<br>".join(referral_parts) if referral_parts else "Direct visit"
+
+            resend.Emails.send({
+                "from": "BankRead <no-reply@bankread.ai>",
+                "to": [settings.contact_email],
+                "subject": f"New signup: {body.full_name}",
+                "html": (
+                    f"<h3>New user registered</h3>"
+                    f"<p><strong>Name:</strong> {body.full_name}</p>"
+                    f"<p><strong>Email:</strong> {body.email}</p>"
+                    f"<p><strong>Organization:</strong> {org.name}</p>"
+                    f"<p><strong>Time:</strong> {user.created_at.strftime('%Y-%m-%d %H:%M UTC')}</p>"
+                    f"<p><strong>Referral:</strong><br>{referral_display}</p>"
+                ),
+            })
+        except Exception:
+            logger.exception("Failed to send signup notification email")
+
     return AuthResponse(access_token=token, user=_user_response(user))
 
 
@@ -227,8 +272,6 @@ async def totp_disable(
 
 
 # ── Password reset endpoints ────────────────────────────────────────
-
-logger = logging.getLogger(__name__)
 
 
 def _password_fingerprint(password_hash: str) -> str:

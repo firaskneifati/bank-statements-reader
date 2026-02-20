@@ -9,6 +9,7 @@ class RegisterRequest(BaseModel):
     password: str = Field(max_length=128)
     full_name: str = Field(max_length=100)
     organization_name: str | None = Field(default=None, max_length=100)
+    referral_source: str | None = Field(default=None, max_length=500)
 
     @field_validator("password")
     @classmethod
