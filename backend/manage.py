@@ -157,7 +157,7 @@ async def show_usage():
                 limit_str += f" (+{org.bonus_pages} bonus)"
 
             print(f"\n  {name} <{email}>")
-            print(f"    Joined: {created.strftime('%Y-%m-%d')}")
+            print(f"    Joined: {created.strftime('%Y-%m-%d %H:%M')}")
             print(f"    Uploads: {uploads}  |  Documents: {docs}  |  Pages: {pages}  |  Transactions: {txns}  |  Exports: {exports}{limit_str}")
 
         # Totals
