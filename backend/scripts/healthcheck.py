@@ -13,6 +13,7 @@ On success, exits silently.
 Env vars (sourced from .env.production):
   RESEND_API_KEY
   CONTACT_EMAIL
+  HEALTHCHECK_URL  (optional, defaults to http://127.0.0.1:8000)
 """
 
 import json
@@ -21,7 +22,7 @@ import sys
 import urllib.error
 import urllib.request
 
-BASE_URL = "https://api.bankread.ai"
+BASE_URL = os.environ.get("HEALTHCHECK_URL", "http://127.0.0.1:8000")
 TIMEOUT = 10  # seconds
 
 

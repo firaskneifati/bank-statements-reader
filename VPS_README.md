@@ -148,9 +148,9 @@ All secrets are in `.env.production` (git-ignored). Key vars:
 
 `backend/scripts/healthcheck.py` runs **outside Docker** on the host, triggered by cron every 3 hours.
 
-**What it checks:**
-1. `GET https://api.bankread.ai/` — expects `{"status": "ok"}`
-2. `POST https://api.bankread.ai/api/v1/auth/login` with bad creds — expects HTTP 401 (proves full stack: Caddy → backend → DB)
+**What it checks** (hits `http://127.0.0.1:8000` directly, bypassing Cloudflare):
+1. `GET /` — expects `{"status": "ok"}`
+2. `POST /api/v1/auth/login` with bad creds — expects HTTP 401 (proves backend → DB)
 
 **On failure:** sends alert email via Resend API to `CONTACT_EMAIL`.
 **On success:** exits silently (no spam).
