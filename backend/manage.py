@@ -4,6 +4,7 @@
 import argparse
 import asyncio
 import sys
+from datetime import timezone, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, func
@@ -157,7 +158,8 @@ async def show_usage():
                 limit_str += f" (+{org.bonus_pages} bonus)"
 
             print(f"\n  {name} <{email}>")
-            print(f"    Joined: {created.strftime('%Y-%m-%d %H:%M')}")
+            eastern = created.replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=-5)))
+            print(f"    Joined: {eastern.strftime('%Y-%m-%d %H:%M')} ET")
             print(f"    Uploads: {uploads}  |  Documents: {docs}  |  Pages: {pages}  |  Transactions: {txns}  |  Exports: {exports}{limit_str}")
 
         # Totals
