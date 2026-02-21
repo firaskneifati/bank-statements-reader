@@ -59,6 +59,8 @@ services:
       GOOGLE_DOCAI_LOCATION: ${GOOGLE_DOCAI_LOCATION:-us}
       GOOGLE_DOCAI_PROCESSOR_ID: ${GOOGLE_DOCAI_PROCESSOR_ID:-}
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+    ports:
+      - "127.0.0.1:8000:8000"
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     depends_on:
       postgres:
