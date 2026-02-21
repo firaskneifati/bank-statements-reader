@@ -40,7 +40,7 @@ def check_health():
 def check_login_stack():
     """POST /api/v1/auth/login with bad creds — should return 401."""
     url = f"{BASE_URL}/api/v1/auth/login"
-    payload = json.dumps({"email": "healthcheck@invalid.test", "password": "invalid"}).encode()
+    payload = json.dumps({"email": "healthcheck@example.com", "password": "invalid"}).encode()
     req = urllib.request.Request(url, data=payload, method="POST")
     req.add_header("Content-Type", "application/json")
     try:
@@ -66,7 +66,7 @@ def send_alert(failures):
     body_text += "\nCheck the server immediately."
 
     payload = json.dumps({
-        "from": "BankRead Alerts <onboarding@resend.dev>",
+        "from": "BankRead Alerts <no-reply@bankread.ai>",
         "to": [to_email],
         "subject": "ALERT: api.bankread.ai health check failed",
         "text": body_text,
