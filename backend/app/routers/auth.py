@@ -34,6 +34,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _get_client_ip(request: Request) -> str | None:
+    """Extract client IP, checking X-Forwarded-For first (for Cloudflare/Caddy)."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else None
+
+
 def _user_response(user: User) -> UserResponse:
     return UserResponse(
         id=user.id,
@@ -67,6 +75,7 @@ async def register(request: Request, body: RegisterRequest, session: AsyncSessio
         role="owner",
         org_id=org.id,
         referral_source=body.referral_source,
+        signup_ip=_get_client_ip(request),
     )
     session.add(user)
     await session.commit()
@@ -138,6 +147,11 @@ async def login(request: Request, body: LoginRequest, session: AsyncSession = De
             await log_audit(session, "login_failed", request, user_id=user.id, org_id=user.org_id, detail=f"{body.email}: bad 2FA code")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid 2FA code")
 
+    user.last_login_ip = _get_client_ip(request)
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+
     token = create_access_token({"sub": str(user.id)})
     await log_audit(session, "login", request, user_id=user.id, org_id=user.org_id, detail=body.email)
     return AuthResponse(access_token=token, user=_user_response(user))
@@ -147,6 +161,8 @@ async def login(request: Request, body: LoginRequest, session: AsyncSession = De
 async def google_oauth(request: Request, body: GoogleOAuthRequest, session: AsyncSession = Depends(get_session)):
     result = await session.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
+
+    client_ip = _get_client_ip(request)
 
     if not user:
         org = Organization(name=f"{body.name}'s Organization")
@@ -159,6 +175,7 @@ async def google_oauth(request: Request, body: GoogleOAuthRequest, session: Asyn
             full_name=body.name,
             role="owner",
             org_id=org.id,
+            signup_ip=client_ip,
         )
         session.add(user)
         await session.commit()
@@ -166,6 +183,11 @@ async def google_oauth(request: Request, body: GoogleOAuthRequest, session: Asyn
         await log_audit(session, "register", request, user_id=user.id, org_id=user.org_id, detail=f"{body.email} (google)")
     else:
         await log_audit(session, "login", request, user_id=user.id, org_id=user.org_id, detail=f"{body.email} (google)")
+
+    user.last_login_ip = client_ip
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
 
     token = create_access_token({"sub": str(user.id)})
     return AuthResponse(access_token=token, user=_user_response(user))

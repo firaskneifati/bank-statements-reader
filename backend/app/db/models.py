@@ -74,6 +74,8 @@ class User(SQLModel, table=True):
     totp_secret: str | None = None
     totp_enabled: bool = Field(default=False)
     referral_source: str | None = Field(default=None)
+    signup_ip: str | None = Field(default=None)
+    last_login_ip: str | None = Field(default=None)
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 

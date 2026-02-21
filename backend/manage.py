@@ -125,14 +125,14 @@ async def show_usage():
     async with async_session_factory() as session:
         # Users
         users_result = await session.execute(
-            select(User.id, User.email, User.full_name, User.created_at).order_by(User.created_at)
+            select(User.id, User.email, User.full_name, User.created_at, User.signup_ip, User.last_login_ip).order_by(User.created_at)
         )
         users = users_result.all()
 
         print(f"\n{'=' * 60}")
         print(f"  USERS ({len(users)})")
         print(f"{'=' * 60}")
-        for uid, email, name, created in users:
+        for uid, email, name, created, signup_ip, last_login_ip in users:
             # Per-user upload stats
             stats = await session.execute(
                 select(
@@ -160,6 +160,8 @@ async def show_usage():
             print(f"\n  {name} <{email}>")
             eastern = created.replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=-5)))
             print(f"    Joined: {eastern.strftime('%Y-%m-%d %H:%M')} ET")
+            ip_info = f"    Signup IP: {signup_ip or 'N/A'}  |  Last login IP: {last_login_ip or 'N/A'}"
+            print(ip_info)
             print(f"    Uploads: {uploads}  |  Documents: {docs}  |  Pages: {pages}  |  Transactions: {txns}  |  Exports: {exports}{limit_str}")
 
         # Totals
